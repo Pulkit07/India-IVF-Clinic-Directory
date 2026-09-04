@@ -1,7 +1,12 @@
 import { and, eq } from "drizzle-orm";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
+  adminProfilesTable,
+  auditEventsTable,
   clinicServicesTable,
   clinicsTable,
+  correctionSubmissionsTable,
   db,
   rateObservationsTable,
   servicesTable,
@@ -33,6 +38,47 @@ const clinicSeeds = [
   ["quiet-river", "Quiet River Reproductive Clinic", "Tirath", "Dakshin Plateau"],
 ] as const;
 
+type BangaloreRecord = {
+  area: string;
+  name: string;
+  address: string;
+  phone: string | null;
+};
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
+function parseBangaloreMarkdown(markdown: string): BangaloreRecord[] {
+  let area = "";
+  const records: BangaloreRecord[] = [];
+  for (const line of markdown.split(/\r?\n/)) {
+    const areaHeading = line.match(/^## (.+)$/);
+    if (areaHeading && areaHeading[1] !== "Success Rate Data") {
+      area = areaHeading[1].trim();
+      continue;
+    }
+    if (!area || !line.startsWith("| ") || line.includes("|---")) continue;
+    const cells = line
+      .split("|")
+      .slice(1, -1)
+      .map((cell) => cell.trim());
+    if (cells.length !== 4 || cells[0] === "Center") continue;
+    records.push({
+      area,
+      name: cells[0],
+      address: cells[1],
+      phone: cells[3] === "—" ? null : cells[3],
+    });
+  }
+  return records;
+}
+
 function sourceData() {
   return {
     title: "Demonstration methodology note: how rate observations are described",
@@ -46,6 +92,20 @@ function sourceData() {
 
 export async function seedDemoData(): Promise<void> {
   if (process.env.SEED_DEMO_DATA === "false") return;
+
+  const [importedSource] = await db
+    .select({ id: sourcesTable.id })
+    .from(sourcesTable)
+    .where(
+      eq(
+        sourcesTable.url,
+        "https://example.invalid/imports/bangalore-ivf-centers-by-area",
+      ),
+    );
+  if (importedSource) {
+    logger.info("Skipping fictional seed data because the Bangalore import is active");
+    return;
+  }
 
   const [existingSource] = await db
     .select()
@@ -198,4 +258,85 @@ export async function seedDemoData(): Promise<void> {
   }
 
   logger.info({ clinics: clinicSeeds.length }, "Demo IVF directory data ready");
+}
+
+export async function replaceWithBangaloreData(): Promise<void> {
+  const relativePath =
+    "attached_assets/Bangalore_IVF_Centers_by_Area_1788551004654.md";
+  const filePath = [
+    resolve(process.cwd(), relativePath),
+    resolve(process.cwd(), "../../", relativePath),
+    resolve(process.cwd(), "../", relativePath),
+  ].find((candidate) => existsSync(candidate));
+  if (!filePath) {
+    throw new Error(`Could not locate ${relativePath}`);
+  }
+  const records = parseBangaloreMarkdown(readFileSync(filePath, "utf8"));
+  if (records.length === 0) {
+    throw new Error(`No Bangalore records found in ${filePath}`);
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(rateObservationsTable);
+    await tx.delete(clinicServicesTable);
+    await tx.delete(correctionSubmissionsTable);
+    await tx.delete(auditEventsTable);
+    await tx.delete(adminProfilesTable);
+    await tx.delete(clinicsTable);
+    await tx.delete(servicesTable);
+    await tx.delete(sourcesTable);
+
+    const [source] = await tx
+      .insert(sourcesTable)
+      .values({
+        title: "Bangalore IVF centers by area — attached import",
+        sourceType: "Google Places compilation",
+        url: "https://example.invalid/imports/bangalore-ivf-centers-by-area",
+        publisher: "Attached user-provided dataset",
+        publishedOn: "2026-09-05",
+        notes:
+          "Imported directly at the user's request. Ratings and phone numbers were retrieved from Google Places and should be verified before outreach. The source's chain-level success-rate claims are not imported as audited rate observations because their definitions are not disclosed.",
+      })
+      .returning({ id: sourcesTable.id });
+
+    const [service] = await tx
+      .insert(servicesTable)
+      .values({
+        name: "IVF and fertility care",
+        slug: "ivf-and-fertility-care",
+        description: "Imported classification from the attached Bangalore list.",
+      })
+      .returning({ id: servicesTable.id });
+
+    for (const [index, record] of records.entries()) {
+      const clinic = (
+        await tx
+          .insert(clinicsTable)
+          .values({
+            slug: `${slugify(record.name)}-${slugify(record.area)}-${index + 1}`,
+            name: record.name,
+            city: record.area,
+            state: "Karnataka",
+            address: record.address,
+            licensingStatus: "Not verified — imported from attached Google Places list",
+            regulator: "Not provided in source",
+            phone: record.phone,
+            recordStatus: "published",
+            lastReviewedAt: "2026-09-05",
+            demonstrationData: false,
+          })
+          .returning()
+      )[0];
+
+      await tx.insert(clinicServicesTable).values({
+        clinicId: clinic.id,
+        serviceId: service.id,
+      });
+    }
+  });
+
+  logger.warn(
+    { clinics: records.length },
+    "Replaced directory with directly published Bangalore import",
+  );
 }

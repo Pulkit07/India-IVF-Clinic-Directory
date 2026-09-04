@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { seedDemoData } from "./lib/seed";
+import { replaceWithBangaloreData, seedDemoData } from "./lib/seed";
 
 const rawPort = process.env["PORT"];
 
@@ -14,6 +14,11 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+if (process.env["IMPORT_BANGALORE_DATA"] === "true") {
+  await replaceWithBangaloreData();
+  process.exit(0);
 }
 
 await seedDemoData();
