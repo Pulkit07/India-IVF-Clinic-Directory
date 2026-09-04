@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Evidence-led IVF clinic directory API for fictional demonstration data.
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: clinics
+    description: Public clinic discovery and profile operations
+  - name: corrections
+    description: Public correction submissions
+  - name: admin
+    description: Protected administration operations
 paths:
   /healthz:
     get:
@@ -24,6 +30,405 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /clinics:
+    get:
+      operationId: listClinics
+      tags: [clinics]
+      summary: List eligible published clinics
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/Location"
+        - $ref: "#/components/parameters/Service"
+        - $ref: "#/components/parameters/AgeBand"
+        - $ref: "#/components/parameters/OutcomeType"
+        - $ref: "#/components/parameters/DenominatorType"
+        - $ref: "#/components/parameters/EggSource"
+        - $ref: "#/components/parameters/VerificationType"
+        - $ref: "#/components/parameters/ReportingYear"
+      responses:
+        "200":
+          description: Published clinics matching the filters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicListResponse"
+  /clinics/{slug}:
+    get:
+      operationId: getClinic
+      tags: [clinics]
+      summary: Get a published clinic profile and eligible observations
+      parameters:
+        - $ref: "#/components/parameters/ClinicSlug"
+      responses:
+        "200":
+          description: Clinic profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicProfile"
+        "404":
+          description: Clinic not found
+  /locations:
+    get:
+      operationId: listLocations
+      tags: [clinics]
+      summary: List public locations with clinic counts
+      responses:
+        "200":
+          description: Public locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+  /corrections:
+    post:
+      operationId: submitCorrection
+      tags: [corrections]
+      summary: Submit a public correction request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CorrectionInput"
+      responses:
+        "201":
+          description: Correction received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CorrectionReceipt"
+        "400":
+          description: Invalid correction
+  /admin/summary:
+    get:
+      operationId: getAdminSummary
+      tags: [admin]
+      summary: Get protected administration summary
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Administration summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSummary"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+  /admin/clinics:
+    get:
+      operationId: listAdminClinics
+      tags: [admin]
+      summary: List clinics for administration
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Clinics including unpublished records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminClinic"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+    post:
+      operationId: createClinic
+      tags: [admin]
+      summary: Create a clinic draft
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClinicInput"
+      responses:
+        "201":
+          description: Clinic draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminClinic"
+        "400":
+          description: Invalid clinic
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+  /admin/clinics/{id}:
+    patch:
+      operationId: updateClinic
+      tags: [admin]
+      summary: Update a clinic
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ClinicId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClinicUpdate"
+      responses:
+        "200":
+          description: Updated clinic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminClinic"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+        "404":
+          description: Clinic not found
+    delete:
+      operationId: archiveClinic
+      tags: [admin]
+      summary: Archive a clinic without deleting history
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ClinicId"
+      responses:
+        "204":
+          description: Clinic archived
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+        "404":
+          description: Clinic not found
+  /admin/services:
+    get:
+      operationId: listServices
+      tags: [admin]
+      summary: List services
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Service"
+        "401":
+          description: Authentication required
+    post:
+      operationId: createService
+      tags: [admin]
+      summary: Create a service
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceInput"
+      responses:
+        "201":
+          description: Service created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+        "400":
+          description: Invalid service
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+  /admin/sources:
+    get:
+      operationId: listSources
+      tags: [admin]
+      summary: List source references
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Source"
+        "401":
+          description: Authentication required
+    post:
+      operationId: createSource
+      tags: [admin]
+      summary: Create a source reference
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SourceInput"
+      responses:
+        "201":
+          description: Source created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Source"
+        "400":
+          description: Invalid source
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+  /admin/rate-observations:
+    get:
+      operationId: listRateObservations
+      tags: [admin]
+      summary: List rate observations for administration
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Rate observations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RateObservation"
+        "401":
+          description: Authentication required
+    post:
+      operationId: createRateObservation
+      tags: [admin]
+      summary: Create a rate observation draft
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateObservationInput"
+      responses:
+        "201":
+          description: Rate observation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateObservation"
+        "400":
+          description: Invalid or incomplete observation
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+  /admin/rate-observations/{id}/publish:
+    post:
+      operationId: publishRateObservation
+      tags: [admin]
+      summary: Publish a rate after validation
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/RateObservationId"
+      responses:
+        "200":
+          description: Published observation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateObservation"
+        "400":
+          description: Missing publication requirements
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+        "404":
+          description: Observation not found
+  /admin/rate-observations/{id}/unpublish:
+    post:
+      operationId: unpublishRateObservation
+      tags: [admin]
+      summary: Immediately unpublish a disputed observation
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/RateObservationId"
+      responses:
+        "200":
+          description: Unpublished observation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateObservation"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+        "404":
+          description: Observation not found
+  /admin/import/preview:
+    post:
+      operationId: previewImport
+      tags: [admin]
+      summary: Validate a CSV import without writing records
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportPreviewInput"
+      responses:
+        "200":
+          description: Import preview and row-level validation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportPreview"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+  /admin/audit-events:
+    get:
+      operationId: listAuditEvents
+      tags: [admin]
+      summary: List immutable audit events
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Audit history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEvent"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
 components:
   schemas:
     HealthStatus:
@@ -33,4 +438,353 @@ components:
           type: string
       required:
         - status
+    Location:
+      type: object
+      required: [slug, city, state, clinicCount]
+      properties:
+        slug: { type: string }
+        city: { type: string }
+        state: { type: string }
+        clinicCount: { type: number, minimum: 0, multipleOf: 1 }
+    Service:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: ["string", "null"] }
+    ServiceInput:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string, minLength: 1 }
+        slug: { type: string, minLength: 1 }
+        description: { type: ["string", "null"] }
+    Source:
+      type: object
+      required: [id, title, sourceType, url]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        sourceType: { type: string }
+        url: { type: string, minLength: 1 }
+        publisher: { type: ["string", "null"] }
+        publishedOn: { type: ["string", "null"], format: date }
+        notes: { type: ["string", "null"] }
+    SourceInput:
+      type: object
+      required: [title, sourceType, url]
+      properties:
+        title: { type: string, minLength: 1 }
+        sourceType: { type: string, minLength: 1 }
+        url: { type: string, minLength: 1 }
+        publisher: { type: ["string", "null"] }
+        publishedOn: { type: ["string", "null"], format: date }
+        notes: { type: ["string", "null"] }
+    RateObservation:
+      type: object
+      required:
+        - id
+        - clinicId
+        - outcomeType
+        - outcomeDefinition
+        - ratePercentage
+        - denominatorType
+        - denominatorDefinition
+        - ageBand
+        - eggSource
+        - treatmentContext
+        - treatmentType
+        - cumulativeMethod
+        - reportingPeriodStart
+        - reportingPeriodEnd
+        - yearLabel
+        - methodologyNotes
+        - smallSample
+        - source
+        - verificationStatus
+        - publicationStatus
+        - comparabilityGroupKey
+      properties:
+        id: { type: string }
+        clinicId: { type: string }
+        outcomeType: { type: string }
+        outcomeDefinition: { type: string }
+        ratePercentage: { type: number, minimum: 0, maximum: 100 }
+        numerator: { type: ["number", "null"], minimum: 0, multipleOf: 1 }
+        denominatorCount: { type: ["number", "null"], minimum: 0, multipleOf: 1 }
+        denominatorType: { type: string }
+        denominatorDefinition: { type: string }
+        ageBand: { type: string }
+        ageMeasurementPoint: { type: ["string", "null"] }
+        eggSource: { type: string }
+        treatmentContext: { type: string }
+        treatmentType: { type: string }
+        priorTreatmentCohort: { type: ["string", "null"] }
+        cumulativeMethod: { type: string }
+        reportingPeriodStart: { type: string, format: date }
+        reportingPeriodEnd: { type: string, format: date }
+        yearLabel: { type: string }
+        methodologyNotes: { type: string }
+        smallSample: { type: boolean }
+        source: { $ref: "#/components/schemas/Source" }
+        verificationStatus: { type: string }
+        publicationStatus: { type: string }
+        comparabilityGroupKey: { type: string }
+    RateObservationInput:
+      type: object
+      required:
+        - clinicId
+        - outcomeType
+        - outcomeDefinition
+        - ratePercentage
+        - denominatorType
+        - denominatorDefinition
+        - ageBand
+        - eggSource
+        - treatmentContext
+        - treatmentType
+        - cumulativeMethod
+        - reportingPeriodStart
+        - reportingPeriodEnd
+        - yearLabel
+        - methodologyNotes
+        - sourceId
+        - verificationStatus
+      properties:
+        clinicId: { type: string }
+        outcomeType: { type: string, minLength: 1 }
+        outcomeDefinition: { type: string, minLength: 1 }
+        ratePercentage: { type: number, minimum: 0, maximum: 100 }
+        numerator: { type: ["number", "null"], minimum: 0, multipleOf: 1 }
+        denominatorCount: { type: ["number", "null"], minimum: 0, multipleOf: 1 }
+        denominatorType: { type: string, minLength: 1 }
+        denominatorDefinition: { type: string, minLength: 1 }
+        ageBand: { type: string, minLength: 1 }
+        ageMeasurementPoint: { type: ["string", "null"] }
+        eggSource: { type: string, minLength: 1 }
+        treatmentContext: { type: string, minLength: 1 }
+        treatmentType: { type: string, minLength: 1 }
+        priorTreatmentCohort: { type: ["string", "null"] }
+        cumulativeMethod: { type: string, minLength: 1 }
+        reportingPeriodStart: { type: string, format: date }
+        reportingPeriodEnd: { type: string, format: date }
+        yearLabel: { type: string, minLength: 1 }
+        methodologyNotes: { type: string, minLength: 1 }
+        smallSample: { type: boolean }
+        sourceId: { type: string, minLength: 1 }
+        verificationStatus: { type: string, minLength: 1 }
+    Clinic:
+      type: object
+      required: [id, slug, name, city, state, services, lastReviewedAt]
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        city: { type: string }
+        state: { type: string }
+        address: { type: ["string", "null"] }
+        latitude: { type: ["number", "null"] }
+        longitude: { type: ["number", "null"] }
+        licensingStatus: { type: ["string", "null"] }
+        regulator: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"], minLength: 1 }
+        website: { type: ["string", "null"], minLength: 1 }
+        services:
+          type: array
+          items: { $ref: "#/components/schemas/Service" }
+        headlineObservation:
+          oneOf:
+            - $ref: "#/components/schemas/RateObservation"
+            - type: "null"
+        lastReviewedAt: { type: string, format: date }
+        demonstrationData: { type: boolean }
+    ClinicProfile:
+      allOf:
+        - $ref: "#/components/schemas/Clinic"
+        - type: object
+          required: [observations]
+          properties:
+            observations:
+              type: array
+              items: { $ref: "#/components/schemas/RateObservation" }
+    ClinicListResponse:
+      type: object
+      required: [items, total, availableLocations, availableServices]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Clinic" }
+        total: { type: number, minimum: 0, multipleOf: 1 }
+        availableLocations:
+          type: array
+          items: { $ref: "#/components/schemas/Location" }
+        availableServices:
+          type: array
+          items: { $ref: "#/components/schemas/Service" }
+    ClinicInput:
+      type: object
+      required: [name, slug, city, state]
+      properties:
+        name: { type: string, minLength: 1 }
+        slug: { type: string, minLength: 1 }
+        city: { type: string, minLength: 1 }
+        state: { type: string, minLength: 1 }
+        address: { type: ["string", "null"] }
+        latitude: { type: ["number", "null"] }
+        longitude: { type: ["number", "null"] }
+        licensingStatus: { type: ["string", "null"] }
+        regulator: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"], minLength: 1 }
+        website: { type: ["string", "null"], minLength: 1 }
+        serviceIds:
+          type: array
+          items: { type: string }
+    ClinicUpdate:
+      allOf:
+        - $ref: "#/components/schemas/ClinicInput"
+    AdminClinic:
+      allOf:
+        - $ref: "#/components/schemas/Clinic"
+        - type: object
+          required: [recordStatus]
+          properties:
+            recordStatus: { type: string }
+    CorrectionInput:
+      type: object
+      required: [clinicSlug, message, contactEmail]
+      properties:
+        clinicSlug: { type: string, minLength: 1 }
+        observationId: { type: ["string", "null"] }
+        message: { type: string, minLength: 10, maxLength: 5000 }
+        contactEmail: { type: string, minLength: 1 }
+    CorrectionReceipt:
+      type: object
+      required: [id, receivedAt]
+      properties:
+        id: { type: string }
+        receivedAt: { type: string, format: date-time }
+    AdminSummary:
+      type: object
+      required: [clinicCount, publishedObservationCount, draftObservationCount, pendingCorrectionCount, recentAuditEvents]
+      properties:
+        clinicCount: { type: number, minimum: 0, multipleOf: 1 }
+        publishedObservationCount: { type: number, minimum: 0, multipleOf: 1 }
+        draftObservationCount: { type: number, minimum: 0, multipleOf: 1 }
+        pendingCorrectionCount: { type: number, minimum: 0, multipleOf: 1 }
+        recentAuditEvents:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEvent" }
+    ImportPreviewInput:
+      type: object
+      required: [csvText, mapping]
+      properties:
+        csvText: { type: string, minLength: 1 }
+        mapping:
+          type: object
+          additionalProperties: { type: string }
+    ImportPreview:
+      type: object
+      required: [totalRows, validRows, invalidRows, duplicateRows, errors]
+      properties:
+        totalRows: { type: number, minimum: 0, multipleOf: 1 }
+        validRows: { type: number, minimum: 0, multipleOf: 1 }
+        invalidRows: { type: number, minimum: 0, multipleOf: 1 }
+        duplicateRows: { type: number, minimum: 0, multipleOf: 1 }
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/ImportRowError" }
+    ImportRowError:
+      type: object
+      required: [rowNumber, field, message]
+      properties:
+        rowNumber: { type: number, minimum: 1, multipleOf: 1 }
+        field: { type: string }
+        message: { type: string }
+    AuditEvent:
+      type: object
+      required: [id, action, entityType, entityId, beforeSnapshot, afterSnapshot, createdAt]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        entityType: { type: string }
+        entityId: { type: string }
+        beforeSnapshot: { type: ["object", "null"], additionalProperties: true }
+        afterSnapshot: { type: ["object", "null"], additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+    SecuritySession:
+      type: object
+      required: [userId, role]
+      properties:
+        userId: { type: string }
+        role: { type: string }
+  parameters:
+    Search:
+      name: q
+      in: query
+      required: false
+      schema: { type: string }
+    Location:
+      name: location
+      in: query
+      required: false
+      schema: { type: string }
+    Service:
+      name: service
+      in: query
+      required: false
+      schema: { type: string }
+    AgeBand:
+      name: ageBand
+      in: query
+      required: false
+      schema: { type: string }
+    OutcomeType:
+      name: outcomeType
+      in: query
+      required: false
+      schema: { type: string }
+    DenominatorType:
+      name: denominatorType
+      in: query
+      required: false
+      schema: { type: string }
+    EggSource:
+      name: eggSource
+      in: query
+      required: false
+      schema: { type: string }
+    VerificationType:
+      name: verificationType
+      in: query
+      required: false
+      schema: { type: string }
+    ReportingYear:
+      name: reportingYear
+      in: query
+      required: false
+      schema: { type: number, multipleOf: 1 }
+    ClinicSlug:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string }
+    ClinicId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    RateObservationId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
 

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "India IVF Clinic Directory"
+description = "A mobile-first, evidence-led directory that helps people browse fictional IVF clinics in India and understand the source, definition, and comparability of every published success-rate observation."
+version = "1.0.0"
+id = "artifacts/ivf-directory"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23331
+
+[services.development]
+run = "pnpm --filter @workspace/ivf-directory run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ivf-directory", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ivf-directory/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23331"
+BASE_PATH = "/"
