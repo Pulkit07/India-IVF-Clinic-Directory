@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Check, ChevronDown, ChevronLeft, ClipboardCheck, ExternalLink, FileText, Globe2, Info, Landmark, Link as LinkIcon, Mail, MapPin, Menu, Phone, Plus, Search, ShieldCheck, SlidersHorizontal, Sparkles, Stethoscope, X } from 'lucide-react';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useParams } from 'wouter';
@@ -127,7 +127,11 @@ function ArrowUpRightIcon() { return <ArrowRight size={14} className="arrow-up-r
 
 function Clinics() {
   const [location, setLocation] = useLocation();
-  const params = new URLSearchParams(location.split('?')[1] || '');
+  const params = new URLSearchParams(
+    typeof window !== 'undefined'
+      ? window.location.search
+      : location.split('?')[1] || '',
+  );
   const [search, setSearch] = useState(params.get('q') || '');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({ location: params.get('location') || '', service: params.get('service') || '', ageBand: params.get('ageBand') || '', outcomeType: params.get('outcomeType') || '', denominatorType: params.get('denominatorType') || '', eggSource: params.get('eggSource') || '', verificationType: params.get('verificationType') || '', reportingYear: params.get('reportingYear') || '' });
@@ -231,6 +235,9 @@ function ImportPanel({ csvText, setCsvText, previewImport }: { csvText: string; 
 
 function AppRouter() {
   const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location]);
   return <ErrorBoundary resetKey={location}><Switch><Route path="/" component={Home} /><Route path="/clinics" component={Clinics} /><Route path="/clinics/:slug" component={ClinicProfilePage} /><Route path="/locations" component={Locations} /><Route path="/methodology" component={Methodology} /><Route path="/glossary" component={Glossary} /><Route path="/about" component={About} /><Route path="/privacy" component={Privacy} /><Route path="/terms" component={Terms} /><Route path="/corrections" component={Corrections} /><Route path="/admin" component={Admin} /><Route path="/not-found" component={NotFound} /><Route component={NotFound} /></Switch></ErrorBoundary>;
 }
 
