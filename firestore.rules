@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only the Admin SDK in the API may access data. The public API exposes
+    // published clinic records; corrections, drafts, and audit data stay private.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

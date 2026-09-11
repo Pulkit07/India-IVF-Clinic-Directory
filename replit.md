@@ -1,45 +1,29 @@
-# [Project name]
+# India IVF Clinic Directory
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An evidence-led clinic directory with a public browsing interface and protected administrator workspace.
 
-## Run & Operate
+## Run and operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+The backend targets Firebase project `ivf-directory-india`. See [FIREBASE.md](FIREBASE.md) for project setup, authentication, deployment, PostgreSQL migration, and emulator testing.
 
-## Stack
+- `pnpm --filter @workspace/api-server dev` — local Express API, default port 5001
+- `pnpm --filter @workspace/ivf-directory dev` — frontend, default port 5173
+- `pnpm run typecheck` — check all packages
+- `pnpm --filter @workspace/api-server build:firebase` — prepare the Cloud Functions package
+- `pnpm --filter @workspace/api-spec codegen` — regenerate API clients and validators
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+## Stack and locations
 
-## Where things live
+- React/Vite frontend: `artifacts/ivf-directory`
+- Express 5 API and Firebase Cloud Function: `artifacts/api-server`
+- Firebase Admin SDK, Firestore storage and Firebase Authentication
+- Firestore collections, validation, transactions and unique-key reservations: `artifacts/api-server/src/lib/store.ts`
+- REST contract: `lib/api-spec/openapi.yaml`
+- Legacy SQL schemas and migration-only PostgreSQL driver: `lib/db`
+- Deployment configuration: `firebase.json`, `.firebaserc`, `firestore.rules`
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+## Backend behavior
 
-## Architecture decisions
+Public browsing requires no account and returns only published records. Admin routes require a verified Firebase ID token with the `admin: true` custom claim. Direct browser access to Firestore is denied by rules; the server enforces access and records admin writes atomically with audit events.
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+The production function runs Node.js 22 in Mumbai (`asia-south1`). Local server startup does not seed, replace or delete data. `DATABASE_URL` is used only by the explicit PostgreSQL migration tool, not by the API runtime.

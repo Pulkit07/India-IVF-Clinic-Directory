@@ -1,5 +1,4 @@
 import { Router, type IRouter } from "express";
-import { asc, eq } from "drizzle-orm";
 import {
   ArchiveClinicParams,
   CreateClinicBody,
@@ -26,16 +25,7 @@ import {
   UpdateClinicParams,
   UpdateClinicResponse,
 } from "@workspace/api-zod";
-import {
-  auditEventsTable,
-  clinicServicesTable,
-  clinicsTable,
-  correctionSubmissionsTable,
-  db,
-  rateObservationsTable,
-  servicesTable,
-  sourcesTable,
-} from "@workspace/db";
+import { list, get, getMany, save } from "../lib/store";
 import { requireAdmin } from "../lib/admin-auth";
 import { comparabilityKey, loadSources, serializeObservation } from "../lib/ivf";
 
@@ -44,11 +34,11 @@ router.use("/admin", requireAdmin);
 
 router.get("/admin/summary", async (_req, res): Promise<void> => {
   const [clinics, published, drafts, pending, recentAuditEvents] = await Promise.all([
-    db.select({ id: clinicsTable.id }).from(clinicsTable),
-    db.select({ id: rateObservationsTable.id }).from(rateObservationsTable).where(eq(rateObservationsTable.publicationStatus, "published")),
-    db.select({ id: rateObservationsTable.id }).from(rateObservationsTable).where(eq(rateObservationsTable.publicationStatus, "draft")),
-    db.select({ id: correctionSubmissionsTable.id }).from(correctionSubmissionsTable).where(eq(correctionSubmissionsTable.status, "pending")),
-    db.select().from(auditEventsTable).orderBy(asc(auditEventsTable.createdAt)).limit(8),
+    list("clinics"),
+    list("rate_observations", { where: ["publicationStatus", "published"] }),
+    list("rate_observations", { where: ["publicationStatus", "draft"] }),
+    list("correction_submissions", { where: ["status", "pending"] }),
+    list("audit_events", { orderBy: "createdAt", descending: true, limit: 8 }),
   ]);
   const response = {
     clinicCount: clinics.length,
@@ -61,15 +51,15 @@ router.get("/admin/summary", async (_req, res): Promise<void> => {
 });
 
 router.get("/admin/clinics", async (_req, res): Promise<void> => {
-  const clinics = await db.select().from(clinicsTable).orderBy(asc(clinicsTable.name));
+  const clinics = await list("clinics", { orderBy: "name" });
   res.json(
     ListAdminClinicsResponse.parse(
-      clinics.map((clinic) => ({
+      await Promise.all(clinics.map(async (clinic) => ({
         ...clinic,
-        services: [],
+        services: await getMany("services", clinic.serviceIds ?? []),
         headlineObservation: null,
         demonstrationData: clinic.demonstrationData,
-      })),
+      }))),
     ),
   );
 });
@@ -80,14 +70,11 @@ router.post("/admin/clinics", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { serviceIds: _serviceIds, ...clinicData } = parsed.data;
-  const [clinic] = await db.insert(clinicsTable).values({
-    ...clinicData,
-    recordStatus: "draft",
-  }).returning();
+  const clinicData = parsed.data;
+  const clinic = await save("clinics", { ...clinicData, recordStatus: "draft" }, res.locals.adminUid);
   res.status(201).json(CreateClinicResponse.parse({
     ...clinic,
-    services: [],
+    services: await getMany("services", clinic.serviceIds ?? []),
     headlineObservation: null,
     demonstrationData: clinic.demonstrationData,
   }));
@@ -104,19 +91,15 @@ router.patch("/admin/clinics/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { serviceIds: _serviceIds, ...clinicUpdate } = parsed.data;
-  const [clinic] = await db
-    .update(clinicsTable)
-    .set(clinicUpdate)
-    .where(eq(clinicsTable.id, params.data.id))
-    .returning();
+  const clinicUpdate = parsed.data;
+  const clinic = await save("clinics", { ...clinicUpdate }, res.locals.adminUid, params.data.id);
   if (!clinic) {
     res.status(404).json({ error: "Clinic not found" });
     return;
   }
   res.json(UpdateClinicResponse.parse({
     ...clinic,
-    services: [],
+    services: await getMany("services", clinic.serviceIds ?? []),
     headlineObservation: null,
     demonstrationData: clinic.demonstrationData,
   }));
@@ -128,11 +111,7 @@ router.delete("/admin/clinics/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [clinic] = await db
-    .update(clinicsTable)
-    .set({ recordStatus: "archived" })
-    .where(eq(clinicsTable.id, params.data.id))
-    .returning({ id: clinicsTable.id });
+  const clinic = await save("clinics", { recordStatus: "archived" }, res.locals.adminUid, params.data.id);
   if (!clinic) {
     res.status(404).json({ error: "Clinic not found" });
     return;
@@ -141,7 +120,7 @@ router.delete("/admin/clinics/:id", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/services", async (_req, res): Promise<void> => {
-  res.json(ListServicesResponse.parse(await db.select().from(servicesTable).orderBy(asc(servicesTable.name))));
+  res.json(ListServicesResponse.parse(await list("services", { orderBy: "name" })));
 });
 
 router.post("/admin/services", async (req, res): Promise<void> => {
@@ -150,12 +129,12 @@ router.post("/admin/services", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [service] = await db.insert(servicesTable).values(parsed.data).returning();
+  const service = await save("services", { ...parsed.data }, res.locals.adminUid);
   res.status(201).json(CreateServiceResponse.parse(service));
 });
 
 router.get("/admin/sources", async (_req, res): Promise<void> => {
-  res.json(ListSourcesResponse.parse(await db.select().from(sourcesTable).orderBy(asc(sourcesTable.title))));
+  res.json(ListSourcesResponse.parse(await list("sources", { orderBy: "title" })));
 });
 
 router.post("/admin/sources", async (req, res): Promise<void> => {
@@ -168,12 +147,12 @@ router.post("/admin/sources", async (req, res): Promise<void> => {
     ...parsed.data,
     publishedOn: parsed.data.publishedOn?.toISOString().slice(0, 10),
   };
-  const [source] = await db.insert(sourcesTable).values(sourceData).returning();
+  const source = await save("sources", sourceData, res.locals.adminUid);
   res.status(201).json(CreateSourceResponse.parse(source));
 });
 
 router.get("/admin/rate-observations", async (_req, res): Promise<void> => {
-  const observations = await db.select().from(rateObservationsTable).orderBy(asc(rateObservationsTable.reportingPeriodEnd));
+  const observations = await list("rate_observations", { orderBy: "reportingPeriodEnd" });
   const sources = await loadSources(observations.map((item) => item.sourceId));
   res.json(ListRateObservationsResponse.parse(observations.map((item) => serializeObservation(item, sources.get(item.sourceId)!))));
 });
@@ -184,8 +163,8 @@ router.post("/admin/rate-observations", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [source] = await db.select().from(sourcesTable).where(eq(sourcesTable.id, parsed.data.sourceId));
-  const [clinic] = await db.select().from(clinicsTable).where(eq(clinicsTable.id, parsed.data.clinicId));
+  const source = await get("sources", parsed.data.sourceId);
+  const clinic = await get("clinics", parsed.data.clinicId);
   if (!source || !clinic) {
     res.status(400).json({ error: "Clinic and source must exist before creating an observation." });
     return;
@@ -207,7 +186,7 @@ router.post("/admin/rate-observations", async (req, res): Promise<void> => {
       jurisdiction: clinic.state,
     }),
   };
-  const [observation] = await db.insert(rateObservationsTable).values(values).returning();
+  const observation = await save("rate_observations", values, res.locals.adminUid);
   res.status(201).json(CreateRateObservationResponse.parse(serializeObservation(observation, source)));
 });
 
@@ -217,17 +196,17 @@ router.post("/admin/rate-observations/:id/publish", async (req, res): Promise<vo
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [observation] = await db.select().from(rateObservationsTable).where(eq(rateObservationsTable.id, params.data.id));
+  const observation = await get("rate_observations", params.data.id);
   if (!observation) {
     res.status(404).json({ error: "Observation not found" });
     return;
   }
-  const [source] = await db.select().from(sourcesTable).where(eq(sourcesTable.id, observation.sourceId));
+  const source = await get("sources", observation.sourceId);
   if (!source || !observation.outcomeDefinition || !observation.denominatorDefinition || !observation.reportingPeriodStart || !observation.reportingPeriodEnd || observation.verificationStatus === "unverified") {
     res.status(400).json({ error: "Source, definitions, reporting period, and verification are required to publish." });
     return;
   }
-  const [updated] = await db.update(rateObservationsTable).set({ publicationStatus: "published" }).where(eq(rateObservationsTable.id, observation.id)).returning();
+  const updated = await save("rate_observations", { publicationStatus: "published" }, res.locals.adminUid, observation.id);
   res.json(PublishRateObservationResponse.parse(serializeObservation(updated, source)));
 });
 
@@ -237,12 +216,12 @@ router.post("/admin/rate-observations/:id/unpublish", async (req, res): Promise<
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [observation] = await db.update(rateObservationsTable).set({ publicationStatus: "archived" }).where(eq(rateObservationsTable.id, params.data.id)).returning();
+  const observation = await save("rate_observations", { publicationStatus: "archived" }, res.locals.adminUid, params.data.id);
   if (!observation) {
     res.status(404).json({ error: "Observation not found" });
     return;
   }
-  const [source] = await db.select().from(sourcesTable).where(eq(sourcesTable.id, observation.sourceId));
+  const source = await get("sources", observation.sourceId);
   res.json(UnpublishRateObservationResponse.parse(serializeObservation(observation, source!)));
 });
 
@@ -266,7 +245,7 @@ router.post("/admin/import/preview", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/audit-events", async (_req, res): Promise<void> => {
-  res.json(ListAuditEventsResponse.parse(await db.select().from(auditEventsTable).orderBy(asc(auditEventsTable.createdAt))));
+  res.json(ListAuditEventsResponse.parse(await list("audit_events", { orderBy: "createdAt", descending: true })));
 });
 
 export default router;

@@ -1,13 +1,5 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
-import {
-  clinicServicesTable,
-  clinicsTable,
-  db,
-  rateObservationsTable,
-  servicesTable,
-  sourcesTable,
-} from "@workspace/db";
-import type { Clinic, RateObservation, Service, Source } from "@workspace/db";
+import type { Clinic, RateObservation, Service, Source } from "@workspace/db/schema";
+import { list, getMany } from "./store";
 
 export const DEMO_SOURCE_URL = "https://example.invalid/ivf-methodology-demo";
 
@@ -65,56 +57,22 @@ export function serializeObservation(
 }
 
 export async function loadPublishedClinics(): Promise<ClinicWithDetails[]> {
-  const clinics = await db
-    .select()
-    .from(clinicsTable)
-    .where(eq(clinicsTable.recordStatus, "published"))
-    .orderBy(asc(clinicsTable.name));
-
-  if (clinics.length === 0) return [];
-
-  const clinicIds = clinics.map((clinic) => clinic.id);
-  const serviceLinks = await db
-    .select({
-      clinicId: clinicServicesTable.clinicId,
-      service: servicesTable,
-    })
-    .from(clinicServicesTable)
-    .innerJoin(servicesTable, eq(servicesTable.id, clinicServicesTable.serviceId))
-    .where(inArray(clinicServicesTable.clinicId, clinicIds));
-  const observations = await db
-    .select()
-    .from(rateObservationsTable)
-    .where(
-      and(
-        inArray(rateObservationsTable.clinicId, clinicIds),
-        eq(rateObservationsTable.publicationStatus, "published"),
-      ),
-    )
-    .orderBy(asc(rateObservationsTable.reportingPeriodEnd));
-
-  const byClinic = new Map<string, ClinicWithDetails>();
-  for (const clinic of clinics) {
-    byClinic.set(clinic.id, { ...clinic, services: [], observations: [] });
-  }
-  for (const link of serviceLinks) {
-    byClinic.get(link.clinicId)?.services.push(link.service);
-  }
-  for (const observation of observations) {
-    byClinic.get(observation.clinicId)?.observations.push(observation);
-  }
-  return [...byClinic.values()];
+  const clinics = await list("clinics", { where: ["recordStatus", "published"] });
+  if (!clinics.length) return [];
+  const [services, observations] = await Promise.all([
+    getMany("services", clinics.flatMap(clinic => clinic.serviceIds ?? [])),
+    list("rate_observations", { where: ["publicationStatus", "published"] }),
+  ]);
+  const serviceMap = new Map(services.map(service => [service.id, service]));
+  return clinics.sort((a, b) => a.name.localeCompare(b.name)).map(clinic => ({
+    ...clinic,
+    services: (clinic.serviceIds ?? []).flatMap(id => serviceMap.has(id) ? [serviceMap.get(id)!] : []),
+    observations: observations.filter(item => item.clinicId === clinic.id).sort((a, b) => a.reportingPeriodEnd.localeCompare(b.reportingPeriodEnd)),
+  }));
 }
 
-export async function loadSources(
-  ids: string[],
-): Promise<Map<string, Source>> {
-  if (ids.length === 0) return new Map();
-  const sources = await db
-    .select()
-    .from(sourcesTable)
-    .where(inArray(sourcesTable.id, ids));
-  return new Map(sources.map((source) => [source.id, source]));
+export async function loadSources(ids: string[]): Promise<Map<string, Source>> {
+  return new Map((await getMany("sources", ids)).map(source => [source.id, source]));
 }
 
 export function asPublicClinic(

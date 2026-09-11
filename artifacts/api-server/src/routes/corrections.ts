@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { SubmitCorrectionBody, SubmitCorrectionResponse } from "@workspace/api-zod";
-import { db, correctionSubmissionsTable } from "@workspace/db";
+import { save } from "../lib/store";
 
 const router: IRouter = Router();
 
@@ -10,10 +10,7 @@ router.post("/corrections", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [submission] = await db
-    .insert(correctionSubmissionsTable)
-    .values(parsed.data)
-    .returning({ id: correctionSubmissionsTable.id, createdAt: correctionSubmissionsTable.createdAt });
+  const submission = await save("correction_submissions", { ...parsed.data });
   res.status(201).json(
     SubmitCorrectionResponse.parse({
       id: submission.id,
