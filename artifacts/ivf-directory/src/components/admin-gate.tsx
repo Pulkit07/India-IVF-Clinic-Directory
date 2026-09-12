@@ -1,32 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth, onIdTokenChanged, signInWithPopup, signOut, GoogleAuthProvider, connectAuthEmulator, type Auth, type User } from "firebase/auth";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-
-let authPromise: Promise<Auth> | undefined;
-async function loadAuth(): Promise<Auth> {
-  const env = import.meta.env;
-  let config = env.VITE_FIREBASE_API_KEY ? {
-    apiKey: env.VITE_FIREBASE_API_KEY,
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN ?? "ivf-directory-india.firebaseapp.com",
-    projectId: env.VITE_FIREBASE_PROJECT_ID ?? "ivf-directory-india",
-    appId: env.VITE_FIREBASE_APP_ID,
-  } : undefined;
-  if (!config) {
-    const response = await fetch("/__/firebase/init.json");
-    if (!response.ok) throw new Error("Administrator sign-in has not been configured.");
-    config = await response.json();
-  }
-  if (!config?.apiKey) throw new Error("Administrator sign-in has not been configured.");
-  const auth = getAuth(getApps()[0] ?? initializeApp(config));
-  if (env.DEV && env.VITE_USE_FIREBASE_EMULATORS === "true") connectAuthEmulator(auth, "http://127.0.0.1:9099");
-  setAuthTokenGetter(async () => {
-    await auth.authStateReady();
-    return auth.currentUser ? auth.currentUser.getIdToken() : null;
-  });
-  return auth;
-}
+import { onIdTokenChanged, signInWithPopup, signOut, GoogleAuthProvider, type Auth, type User } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { getFirebase } from '@/lib/firebase';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function AdminGate({ children }: { children: ReactNode }) {
   const cache = useQueryClient();
@@ -39,21 +15,24 @@ export function AdminGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | undefined;
-    (authPromise ??= loadAuth()).then(instance => {
+    let unsubscribeAccess: (() => void) | undefined;
+    getFirebase().then(({ auth: instance, db }) => {
       if (disposed) return;
       setAuth(instance);
-      unsubscribe = onIdTokenChanged(instance, async current => {
-        setReady(false);
+      unsubscribe = onIdTokenChanged(instance, current => {
+        unsubscribeAccess?.();
         cache.clear();
-        try {
-          const token = await current?.getIdTokenResult();
-          if (!disposed) { setUser(current); setAdmin(token?.claims.admin === true); }
-        } catch {
-          if (!disposed) { setUser(null); setAdmin(false); setError("Your session could not be verified. Please sign in again."); }
-        } finally { if (!disposed) setReady(true); }
+        setUser(current); setAdmin(false); setReady(!current);
+        if (current) unsubscribeAccess = onSnapshot(doc(db, 'admin_access', current.uid), access => {
+          if (!disposed) {
+            const enabled = access.exists() && access.data().enabled === true;
+            if (!enabled) cache.clear();
+            setAdmin(enabled); setReady(true);
+          }
+        }, () => { if (!disposed) { setAdmin(false); setReady(true); setError('Administrator access could not be checked.'); } });
       });
-    }).catch(() => { if (!disposed) { setError("Administrator sign-in has not been configured."); setReady(true); } });
-    return () => { disposed = true; unsubscribe?.(); };
+    }).catch(() => { if (!disposed) { setError('Administrator sign-in has not been configured.'); setReady(true); } });
+    return () => { disposed = true; unsubscribe?.(); unsubscribeAccess?.(); };
   }, [cache]);
 
   const login = async () => {

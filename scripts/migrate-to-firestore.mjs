@@ -5,7 +5,7 @@ import { isDeepStrictEqual } from "node:util";
 
 const requireApi = createRequire(new URL("../artifacts/api-server/package.json", import.meta.url));
 const requireDb = createRequire(new URL("../lib/db/package.json", import.meta.url));
-const { initializeApp } = requireApi("firebase-admin/app");
+const { deleteApp, initializeApp } = requireApi("firebase-admin/app");
 const { getFirestore } = requireApi("firebase-admin/firestore");
 const { Pool } = requireDb("pg");
 
@@ -20,6 +20,8 @@ export function normalize(value) {
 const camel = row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()), value]));
 const tables = ["services", "sources", "clinics", "clinic_services", "rate_observations", "correction_submissions", "audit_events", "admin_profiles"];
 const uniqueFields = { clinics: "slug", services: "slug", sources: "url" };
+const uniqueId = (collection, value) =>
+  `${collection}_${createHash("sha256").update(value).digest("hex")}`;
 
 export async function migrateRecords(firestore, data) {
   // Preflight the entire target before writing. Never replace records already edited there.
@@ -40,12 +42,12 @@ export async function migrateRecords(firestore, data) {
       const field = uniqueFields[collection];
       let unique;
       if (field) {
-        unique = firestore.collection("_unique").doc(createHash("sha256").update(JSON.stringify([collection, field, row[field]])).digest("hex"));
+        unique = firestore.collection("unique_keys").doc(uniqueId(collection, row[field]));
         const reserved = await tx.get(unique);
         if (reserved.exists && reserved.get("entityId") !== row.id) throw new Error(`Unique ${field} conflict in ${collection}.`);
       }
       if (!existing.exists) tx.create(ref, row);
-      if (unique) tx.set(unique, { entityId: row.id });
+      if (unique) tx.set(unique, { entityType: collection, entityId: row.id, value: row[field] });
     });
   }
 }
@@ -80,13 +82,30 @@ async function main() {
       }
     }
   }
+  const sourcesById = new Map(data.sources.map(source => [source.id, source]));
+  for (const observation of data.rate_observations) {
+    observation.ratePercentage = Number(observation.ratePercentage);
+    const source = sourcesById.get(observation.sourceId);
+    if (source) {
+      observation.source = Object.fromEntries(
+        ["id", "title", "sourceType", "url", "publisher", "publishedOn", "notes"]
+          .filter(key => source[key] !== null && source[key] !== undefined)
+          .map(key => [key, source[key]]),
+      );
+    }
+  }
   for (const [collection, rows] of Object.entries(data)) console.log(`${collection}: ${rows.length}`);
   if (!write) { console.log("Dry run complete. No Firestore data was written."); return; }
 
-  initializeApp({ projectId: project });
+  const app = initializeApp({ projectId: project });
   const firestore = getFirestore();
-  await migrateRecords(firestore, data);
-  console.log("Migration complete. Existing matching records were retained; IDs and relationships were preserved.");
+  try {
+    await migrateRecords(firestore, data);
+    console.log("Migration complete. Existing matching records were retained; IDs and relationships were preserved.");
+  } finally {
+    await firestore.terminate();
+    await deleteApp(app);
+  }
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {

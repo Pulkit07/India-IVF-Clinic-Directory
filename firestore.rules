@@ -1,10 +1,140 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only the Admin SDK in the API may access data. The public API exposes
-    // published clinic records; corrections, drafts, and audit data stay private.
-    match /{document=**} {
-      allow read, write: if false;
+    function admin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/admin_access/$(request.auth.uid)).data.enabled == true;
     }
+    function text(v, max) { return v is string && v.size() > 0 && v.size() <= max; }
+    function optionalText(v, max) { return v == null || (v is string && v.size() <= max); }
+    function date(v) { return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+    function slug(v) { return text(v, 160) && v.matches('^[a-z0-9]+(-[a-z0-9]+)*$'); }
+    function key(kind, value) { return kind + '_' + hashing.sha256(value).toHexString().lower(); }
+    function field(kind) { return kind == 'sources' ? 'url' : 'slug'; }
+    function unique(kind, d) {
+      let k = key(kind, d[field(kind)]);
+      return getAfter(/databases/$(database)/documents/unique_keys/$(k)).data ==
+        {'entityType': kind, 'entityId': d.id, 'value': d[field(kind)]};
+    }
+    function audited(kind, id) {
+      let d = request.resource.data;
+      let a = getAfter(/databases/$(database)/documents/audit_events/$(d.auditId)).data;
+      return d.id == id && text(d.auditId, 128) && d.updatedAt == request.time &&
+        d.createdAt == (resource == null ? request.time : resource.data.createdAt) &&
+        !exists(/databases/$(database)/documents/audit_events/$(d.auditId)) &&
+        a.actorUserId == request.auth.uid && a.entityType == kind && a.entityId == id &&
+        a.afterSnapshot == d && a.beforeSnapshot == (resource == null ? null : resource.data) &&
+        a.createdAt == request.time;
+    }
+    function serviceAt(ids, i) {
+      return ids.size() <= i || (ids[i] is string && exists(/databases/$(database)/documents/services/$(ids[i])));
+    }
+    function validClinic(d) {
+      return d.keys().hasOnly(['id','name','slug','city','state','address','latitude','longitude','licensingStatus','regulator','phone','email','website','recordStatus','lastReviewedAt','demonstrationData','serviceIds','createdAt','updatedAt','auditId']) &&
+        text(d.name, 300) && slug(d.slug) && text(d.city, 200) && text(d.state, 200) &&
+        optionalText(d.address, 2000) && optionalText(d.licensingStatus, 500) && optionalText(d.regulator, 500) &&
+        optionalText(d.phone, 100) && optionalText(d.email, 320) && optionalText(d.website, 2048) &&
+        (d.latitude == null || (d.latitude is number && d.latitude >= -90 && d.latitude <= 90)) &&
+        (d.longitude == null || (d.longitude is number && d.longitude >= -180 && d.longitude <= 180)) &&
+        d.recordStatus in ['draft','published','archived'] && date(d.lastReviewedAt) && d.demonstrationData is bool &&
+        d.serviceIds is list && d.serviceIds.size() <= 5 && d.serviceIds.toSet().size() == d.serviceIds.size() &&
+        serviceAt(d.serviceIds, 0) && serviceAt(d.serviceIds, 1) && serviceAt(d.serviceIds, 2) && serviceAt(d.serviceIds, 3) && serviceAt(d.serviceIds, 4);
+    }
+    function validService(d) {
+      return d.keys().hasOnly(['id','name','slug','description','createdAt','updatedAt','auditId']) &&
+        text(d.name, 300) && slug(d.slug) && optionalText(d.description, 2000);
+    }
+    function validSource(d) {
+      return d.keys().hasOnly(['id','title','sourceType','url','publisher','publishedOn','notes','createdAt','updatedAt','auditId']) &&
+        text(d.title, 500) && text(d.sourceType, 100) && text(d.url, 2048) && d.url.matches('^https?://.+') &&
+        optionalText(d.publisher, 500) && (d.publishedOn == null || date(d.publishedOn)) && optionalText(d.notes, 5000);
+    }
+    function sourceSnapshot(s) {
+      return {'id':s.id, 'title':s.title, 'sourceType':s.sourceType, 'url':s.url, 'publisher':s.publisher, 'publishedOn':s.publishedOn, 'notes':s.notes};
+    }
+    function norm(v) { return v.lower().replace('^\\s+|\\s+$', '').replace('\\s+', '-'); }
+    function comparison(d, state) {
+      return [norm(d.outcomeDefinition), norm(d.denominatorDefinition), norm(d.ageBand), norm(d.ageMeasurementPoint == null ? 'unspecified' : d.ageMeasurementPoint), norm(d.eggSource), norm(d.treatmentContext), norm(d.treatmentType), norm(d.cumulativeMethod), norm(d.priorTreatmentCohort == null ? 'unspecified' : d.priorTreatmentCohort), norm(state), 'v1'].join('|');
+    }
+    function validObservation(d) {
+      let c = getAfter(/databases/$(database)/documents/clinics/$(d.clinicId)).data;
+      let s = getAfter(/databases/$(database)/documents/sources/$(d.sourceId)).data;
+      return d.keys().hasOnly(['id','clinicId','outcomeType','outcomeDefinition','ratePercentage','numerator','denominatorCount','denominatorType','denominatorDefinition','ageBand','ageMeasurementPoint','eggSource','treatmentContext','treatmentType','priorTreatmentCohort','cumulativeMethod','reportingPeriodStart','reportingPeriodEnd','yearLabel','methodologyNotes','smallSample','sourceId','source','verificationStatus','publicationStatus','comparabilityGroupKey','supersedesId','createdAt','updatedAt','auditId']) &&
+        text(d.clinicId, 128) && text(d.sourceId, 128) && c.id == d.clinicId && s.id == d.sourceId &&
+        d.source == sourceSnapshot(s) && text(d.outcomeType, 200) && text(d.outcomeDefinition, 2000) &&
+        d.ratePercentage is number && d.ratePercentage >= 0 && d.ratePercentage <= 100 &&
+        (d.numerator == null || (d.numerator is int && d.numerator >= 0)) &&
+        (d.denominatorCount == null || (d.denominatorCount is int && d.denominatorCount > 0)) &&
+        (d.numerator == null || d.denominatorCount == null || d.numerator <= d.denominatorCount) &&
+        text(d.denominatorType, 200) && text(d.denominatorDefinition, 2000) && text(d.ageBand, 100) &&
+        optionalText(d.ageMeasurementPoint, 200) && text(d.eggSource, 100) && text(d.treatmentContext, 200) && text(d.treatmentType, 200) &&
+        optionalText(d.priorTreatmentCohort, 200) && text(d.cumulativeMethod, 500) &&
+        date(d.reportingPeriodStart) && date(d.reportingPeriodEnd) && d.reportingPeriodStart <= d.reportingPeriodEnd &&
+        text(d.yearLabel, 50) && text(d.methodologyNotes, 5000) && d.smallSample is bool && text(d.verificationStatus, 100) &&
+        d.publicationStatus in ['draft','published','archived'] &&
+        (d.publicationStatus != 'published' || (d.verificationStatus != 'unverified' && c.recordStatus == 'published')) &&
+        optionalText(d.supersedesId, 128) && d.comparabilityGroupKey == comparison(d, c.state);
+    }
+    match /admin_access/{uid} {
+      // Only trusted project tools/the owner can grant access; never a browser client.
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    match /clinics/{id} {
+      allow read: if resource.data.recordStatus == 'published' || admin();
+      allow create: if admin() && validClinic(request.resource.data) && audited('clinics', id) && unique('clinics', request.resource.data) && request.resource.data.recordStatus == 'draft' && request.resource.data.demonstrationData == false;
+      allow update: if admin() && validClinic(request.resource.data) && audited('clinics', id) && unique('clinics', request.resource.data) && request.resource.data.demonstrationData == resource.data.demonstrationData &&
+        (resource.data.slug == request.resource.data.slug || !existsAfter(/databases/$(database)/documents/unique_keys/$(key('clinics', resource.data.slug))));
+      allow delete: if false;
+    }
+    match /services/{id} {
+      allow read: if true;
+      allow create: if admin() && validService(request.resource.data) && audited('services', id) && unique('services', request.resource.data);
+      allow update, delete: if false;
+    }
+    match /sources/{id} {
+      // Only the source snapshot attached to a published observation is public.
+      allow read: if admin();
+      allow create: if admin() && validSource(request.resource.data) && audited('sources', id) && unique('sources', request.resource.data);
+      allow update, delete: if false;
+    }
+    match /rate_observations/{id} {
+      allow read: if admin() || (resource.data.publicationStatus == 'published' && get(/databases/$(database)/documents/clinics/$(resource.data.clinicId)).data.recordStatus == 'published');
+      allow create: if admin() && validObservation(request.resource.data) && audited('rate_observations', id) && request.resource.data.publicationStatus == 'draft';
+      allow update: if admin() && validObservation(request.resource.data) && audited('rate_observations', id) && request.resource.data.clinicId == resource.data.clinicId && request.resource.data.sourceId == resource.data.sourceId;
+      allow delete: if false;
+    }
+    match /unique_keys/{keyId} {
+      allow read: if admin();
+      allow create, update: if admin() && request.resource.data.keys().hasOnly(['entityType','entityId','value']) &&
+        request.resource.data.entityType in ['clinics','services','sources'] &&
+        keyId == key(request.resource.data.entityType, request.resource.data.value) &&
+        getAfter(/databases/$(database)/documents/$(request.resource.data.entityType)/$(request.resource.data.entityId)).data[field(request.resource.data.entityType)] == request.resource.data.value &&
+        (resource == null || resource.data.entityId == request.resource.data.entityId);
+      allow delete: if admin() && resource.data.entityType == 'clinics' &&
+        getAfter(/databases/$(database)/documents/clinics/$(resource.data.entityId)).data.slug != resource.data.value;
+    }
+    match /audit_events/{id} {
+      allow read: if admin();
+      allow create: if admin() && request.resource.data.keys().hasOnly(['id','actorUserId','action','entityType','entityId','beforeSnapshot','afterSnapshot','createdAt']) &&
+        request.resource.data.id == id && request.resource.data.actorUserId == request.auth.uid && request.resource.data.createdAt == request.time &&
+        request.resource.data.entityType in ['clinics','services','sources','rate_observations'] &&
+        request.resource.data.afterSnapshot == getAfter(/databases/$(database)/documents/$(request.resource.data.entityType)/$(request.resource.data.entityId)).data &&
+        request.resource.data.afterSnapshot.auditId == id &&
+        (exists(/databases/$(database)/documents/$(request.resource.data.entityType)/$(request.resource.data.entityId)) ?
+          (request.resource.data.action == 'update' && request.resource.data.beforeSnapshot == get(/databases/$(database)/documents/$(request.resource.data.entityType)/$(request.resource.data.entityId)).data) :
+          (request.resource.data.action == 'create' && request.resource.data.beforeSnapshot == null));
+      allow update, delete: if false;
+    }
+    match /correction_submissions/{id} {
+      allow read: if admin();
+      allow create: if request.resource.data.keys().hasOnly(['id','clinicSlug','observationId','message','contactEmail','status','createdAt']) &&
+        request.resource.data.id == id && slug(request.resource.data.clinicSlug) && optionalText(request.resource.data.observationId, 128) &&
+        text(request.resource.data.message, 5000) && request.resource.data.message.size() >= 10 &&
+        text(request.resource.data.contactEmail, 320) && request.resource.data.contactEmail.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
+        request.resource.data.status == 'pending' && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

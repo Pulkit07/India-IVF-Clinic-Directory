@@ -1,41 +1,46 @@
-# Firebase backend
+# Firebase deployment
 
-Target project: **ivf-directory-india**. The API now uses Cloud Firestore and Firebase Authentication. Firebase Hosting forwards `/api/**` to the `api` Cloud Function in `asia-south1` (Mumbai), using Node.js 22. The existing frontend and REST response shapes are retained.
+The app targets Firebase project `ivf-directory-india` and works on the no-cost Spark plan. The browser uses Firebase Authentication and Cloud Firestore directly; Firestore Security Rules enforce public visibility, administrator access, data validation, unique keys and atomic audit records. Firebase Hosting serves the static Vite build. No Cloud Function is deployed.
 
-## Status
+## Configured project state
 
-The code migration is complete and tested locally. **Production deployment and existing-data migration have not been performed.** Firebase console access was blocked by the browser's security policy during this task. The project's billing, enabled products, web app configuration, and administrator account still need to be checked.
-
-## One-time project setup
-
-1. Open the [Firebase project](https://console.firebase.google.com/project/ivf-directory-india/overview). Cloud Functions deployment requires the Blaze plan; review and enable billing yourself if needed. See [Firebase's setup guide](https://firebase.google.com/docs/functions/get-started).
-2. Create the default Cloud Firestore database in native mode, preferably in `asia-south1` to match the function. Use production rules; this repository's rules deny all direct client access.
-3. Register a Web app under Project settings. Enable the Google sign-in provider under Authentication and select its support email. Check that the Hosting domain is an authorized authentication domain.
-4. Install Node.js 22 and pnpm. Install project dependencies with `pnpm install`. The commands below use the Firebase CLI version tested with this repository: `pnpm dlx firebase-tools@14.17.0`.
-5. Authenticate the CLI with `pnpm dlx firebase-tools@14.17.0 login`. Local migration and administrator tools also require Application Default Credentials, for example through `gcloud auth application-default login`. Cloud Functions uses its own runtime service account.
-
-Firebase Hosting supplies the web app configuration through [`/__/firebase/init.json`](https://firebase.google.com/docs/hosting/reserved-urls). For Vite development or another frontend host, copy `artifacts/ivf-directory/.env.example` to `.env.local` in the same directory and fill in the Web app configuration. No service-account key belongs in the frontend.
+- Standard Firestore database in `asia-south1` (Mumbai)
+- Google sign-in enabled with public name `OpenIVF`
+- `OpenIVF Web` registered with Hosting site `ivf-directory-india`
+- Web configuration stored in ignored `artifacts/ivf-directory/.env.local`
+- Direct-access emulator suite: 47 checks passing
 
 ## Deploy
 
-Run from the repository root:
+Authenticate the Firebase CLI, then run from the repository root:
 
 ```sh
 pnpm run typecheck
-pnpm --filter @workspace/api-server build:firebase
 pnpm --filter @workspace/ivf-directory build
-pnpm dlx firebase-tools@14.17.0 deploy --project ivf-directory-india --only firestore,functions,hosting
+pnpm dlx firebase-tools@14.17.0 deploy --project ivf-directory-india --only firestore,hosting
 ```
 
-The Firebase predeploy hooks rebuild the API and frontend. The generated `.firebase-build` directory contains a standalone deployable function package; it does not require the monorepo or PostgreSQL at runtime. Do not run `firebase init` over the checked-in configuration.
+Hosting serves the single-page application and supplies Firebase configuration through `/__/firebase/init.json`. The public directory queries only clinics and observations whose `recordStatus` or `publicationStatus` is `published`. Drafts, sources, correction messages, unique-key reservations, audit events and administrator records remain private.
 
-After deployment, verify `/api/healthz`, `/api/clinics`, and `/admin` on the Hosting URL reported by the CLI. An empty new database produces an empty directory until data is imported. The public homepage requires no login.
+## Administrator access
+
+First sign in at `/admin`, then find the account UID under Firebase Authentication > Users. From a trusted shell with Application Default Credentials, grant access with:
+
+```sh
+node scripts/firebase-admin.mjs FIREBASE_UID grant --project=ivf-directory-india
+```
+
+Revoke access immediately with:
+
+```sh
+node scripts/firebase-admin.mjs FIREBASE_UID revoke --project=ivf-directory-india
+```
+
+The browser cannot create or change `admin_access` records. Rules check the record for every protected operation, so revocation does not wait for an ID-token refresh.
 
 ## Transfer existing PostgreSQL data
 
-The original SQL schemas remain under `lib/db` for type definitions and migration support. The old seeding source is retained under `scripts/legacy` as reference; it is not run by the Firebase backend. Server startup no longer creates fictional records or replaces data.
-
-Take a database backup and pause writes to the old backend during transfer. Set `DATABASE_URL` securely in your local shell to the existing PostgreSQL database. First run the read-only count preview:
+Set `DATABASE_URL` to the existing PostgreSQL database. Preview record counts without writing:
 
 ```sh
 node scripts/migrate-to-firestore.mjs
@@ -47,52 +52,20 @@ Then transfer to the explicit project:
 node scripts/migrate-to-firestore.mjs --write --project=ivf-directory-india
 ```
 
-The tool reads a consistent PostgreSQL snapshot, preserves UUIDs, timestamps, date-only fields, publication states and demonstration labels, and embeds clinic-service relationships as `serviceIds`. Historical admin profiles are preserved in `_legacy_admin_profiles`; they do not grant Firebase access. It creates unique-key reservations for clinic/service slugs and source URLs.
+The tool reads a consistent, read-only PostgreSQL snapshot and preserves IDs, timestamps, publication states and clinic-service relationships. It never modifies PostgreSQL. Reruns retain identical records and reject conflicts instead of overwriting them. Pause old-backend writes during transfer and verify counts before switching traffic.
 
-Reruns retain identical records and reject differing destination records. Each record is committed atomically with its unique-key reservation. A failed run may have transferred earlier records; rerun after resolving the reported conflict. This is a one-time transfer, not ongoing synchronization. Keep both backends free of administrative writes during the transfer and verify record counts and sample profiles before switching traffic. The source database is never modified.
+## Test locally
 
-## Administrator access
-
-Open `/admin` and sign in with the intended Google account once, then locate its UID in Firebase Authentication. From a trusted local shell with the project's credentials:
+Java 21 is required by the Firestore emulator:
 
 ```sh
-node scripts/firebase-admin.mjs FIREBASE_UID grant --project=ivf-directory-india
+pnpm dlx firebase-tools@14.17.0 emulators:exec --project demo-ivf-directory --only auth,firestore 'node artifacts/ivf-directory/tests/firestore.test.mjs'
 ```
 
-Sign out and back in. Only ID tokens with the `admin: true` [custom claim](https://firebase.google.com/docs/auth/admin/custom-claims) can access admin routes. Revoked or disabled sessions are rejected. To revoke access:
+The tests cover public queries, private drafts and correction data, administrator revocation, validation, source snapshots, publication workflow, unique-key races, immutable audits and CSV preview. All writes use an isolated `demo-` project.
 
-```sh
-node scripts/firebase-admin.mjs FIREBASE_UID revoke --project=ivf-directory-india
-```
+For local sign-in, set `VITE_USE_FIREBASE_EMULATORS=true`, `VITE_FIREBASE_PROJECT_ID=demo-ivf-directory` and `VITE_FIREBASE_API_KEY=emulator-key` in `.env.local`, start the Auth and Firestore emulators, then run `pnpm --filter @workspace/ivf-directory dev`.
 
-Revocation also invalidates existing sessions. Admin writes create audit records in the same Firestore transaction. The HTTP API preserves its original audit response contract; the actor UID is stored in the database.
+## Limits
 
-## Tests and local development
-
-Install Java 21 for the Firestore emulator. Run the integration suite without contacting the production project:
-
-```sh
-pnpm dlx firebase-tools@14.17.0 emulators:exec --project demo-ivf-directory --only auth,firestore 'node scripts/test-firebase.mjs'
-```
-
-Tests cover unauthenticated and unauthorized requests, disabled accounts, draft visibility, observation publication, service relationships, concurrent duplicate prevention, date validation, corrections, audit records, direct Firestore access denial, and migration rerun/conflict handling. All test writes use an isolated `demo-` project. Do not point the test suite at the live project.
-
-For local API work, start the Auth and Firestore emulators:
-
-```sh
-pnpm dlx firebase-tools@14.17.0 emulators:start --project demo-ivf-directory --only auth,firestore
-```
-
-In another terminal:
-
-```sh
-GCLOUD_PROJECT=demo-ivf-directory FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 pnpm --filter @workspace/api-server dev
-```
-
-The local API listens on port 5001; Vite defaults to 5173 and proxies `/api` there. To exercise local sign-in, set the frontend's `VITE_USE_FIREBASE_EMULATORS=true`, `VITE_FIREBASE_PROJECT_ID=demo-ivf-directory`, and a dummy `VITE_FIREBASE_API_KEY=emulator-key` in `.env.local`. Start the frontend with `pnpm --filter @workspace/ivf-directory dev`. Never set emulator variables in production.
-
-## Scope and operational limits
-
-Public directory queries retain the original in-memory filtering and load all published clinics and observations. This is suitable for the current small directory, but reads grow with dataset size; pagination and indexed search are future work. Function instances are capped at 10, which is not a spending cap.
-
-The existing clinic editor creates drafts and archives records; it does not include a clinic publication action. Existing published clinics retain their status during migration. The CSV screen remains a preview, not a data import. This conversion does not invent success rates or modify reference source files.
+The current public directory loads all published clinics and then one published-observation query per clinic. This suits the current small directory but should move to denormalized public documents or pagination as the dataset grows. Spark quotas still apply; the project does not incur pay-as-you-go charges unless its billing plan is changed separately.
