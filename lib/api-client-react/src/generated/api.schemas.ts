@@ -185,6 +185,21 @@ export interface Clinic {
      * @nullable
      */
   website?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 5
+     * @nullable
+     */
+  googleRating?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  googleReviewCount?: number | null;
+  /** @nullable */
+  dataSource?: string | null;
+  /** @nullable */
+  dataRetrievedAt?: string | null;
   services: Service[];
   headlineObservation?: RateObservation | null;
   lastReviewedAt: string;
@@ -234,6 +249,21 @@ export interface ClinicInput {
      * @nullable
      */
   website?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 5
+     * @nullable
+     */
+  googleRating?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  googleReviewCount?: number | null;
+  /** @nullable */
+  dataSource?: string | null;
+  /** @nullable */
+  dataRetrievedAt?: string | null;
   serviceIds?: string[];
 }
 

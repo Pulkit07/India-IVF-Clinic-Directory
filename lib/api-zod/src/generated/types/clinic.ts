@@ -36,6 +36,21 @@ export interface Clinic {
      * @nullable
      */
   website?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 5
+     * @nullable
+     */
+  googleRating?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  googleReviewCount?: number | null;
+  /** @nullable */
+  dataSource?: string | null;
+  /** @nullable */
+  dataRetrievedAt?: Date | null;
   services: Service[];
   headlineObservation?: RateObservation | null;
   lastReviewedAt: Date;

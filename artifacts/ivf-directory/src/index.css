@@ -646,13 +646,28 @@ p { color: hsl(var(--muted-foreground)); line-height: 1.65; }
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  margin: 14px 0 2px;
+  margin: 0 0 2px;
 }
 
 .clinic-card-name {
   margin: 0;
   font-size: 24px;
   letter-spacing: -0.045em;
+}
+
+.clinic-card .clinic-location {
+  align-items: flex-start;
+  max-width: 720px;
+}
+
+.clinic-card .clinic-location svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.search-box button svg,
+.directory-search button svg {
+  color: hsl(var(--primary-foreground));
 }
 
 .clinic-card-actions {

@@ -592,6 +592,10 @@ components:
         phone: { type: ["string", "null"] }
         email: { type: ["string", "null"], minLength: 1 }
         website: { type: ["string", "null"], minLength: 1 }
+        googleRating: { type: ["number", "null"], minimum: 0, maximum: 5 }
+        googleReviewCount: { type: ["number", "null"], minimum: 0, multipleOf: 1 }
+        dataSource: { type: ["string", "null"] }
+        dataRetrievedAt: { type: ["string", "null"], format: date }
         services:
           type: array
           items: { $ref: "#/components/schemas/Service" }
@@ -640,6 +644,10 @@ components:
         phone: { type: ["string", "null"] }
         email: { type: ["string", "null"], minLength: 1 }
         website: { type: ["string", "null"], minLength: 1 }
+        googleRating: { type: ["number", "null"], minimum: 0, maximum: 5 }
+        googleReviewCount: { type: ["number", "null"], minimum: 0, multipleOf: 1 }
+        dataSource: { type: ["string", "null"] }
+        dataRetrievedAt: { type: ["string", "null"], format: date }
         serviceIds:
           type: array
           items: { type: string }
@@ -787,4 +795,3 @@ components:
       type: apiKey
       in: cookie
       name: session
-

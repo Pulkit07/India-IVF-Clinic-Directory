@@ -251,24 +251,16 @@ function ClinicRateSummary({ observation }: { observation: RateObservation }) {
 }
 
 export function ClinicCard({ clinic }: { clinic: Clinic }) {
+  const displayAddress =
+    clinic.address || [clinic.city, clinic.state].filter(Boolean).join(", ");
   const locationQuery =
     clinic.latitude != null && clinic.longitude != null
       ? `${clinic.latitude},${clinic.longitude}`
-      : [clinic.address, clinic.city, clinic.state].filter(Boolean).join(", ");
+      : displayAddress;
   const locationUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationQuery)}`;
 
   return (
     <article className="clinic-card" data-testid={`card-clinic-${clinic.id}`}>
-      {!clinic.demonstrationData && (
-        <div className="clinic-card-top">
-          <div>
-            <span className="status-dot" />{" "}
-            <span className="micro-label">
-              {clinic.licensingStatus || "Licensing information available"}
-            </span>
-          </div>
-        </div>
-      )}
       <div className="clinic-card-heading">
         <h2 className="clinic-card-name">{clinic.name}</h2>
         <div className="clinic-card-actions">
@@ -287,7 +279,7 @@ export function ClinicCard({ clinic }: { clinic: Clinic }) {
             target="_blank"
             rel="noreferrer"
             aria-label={`View ${clinic.name} on a map`}
-            title="View location"
+            title={`View ${displayAddress} on Google Maps`}
             data-testid={`link-location-clinic-${clinic.id}`}
           >
             <MapPin size={18} />
@@ -296,7 +288,7 @@ export function ClinicCard({ clinic }: { clinic: Clinic }) {
       </div>
       <p className="clinic-location">
         <MapPin size={15} />
-        {clinic.city}, {clinic.state}
+        <span>{displayAddress}</span>
       </p>
       {clinic.headlineObservation ? (
         <ClinicRateSummary observation={clinic.headlineObservation} />

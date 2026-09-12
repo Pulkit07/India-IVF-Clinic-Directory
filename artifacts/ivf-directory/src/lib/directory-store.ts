@@ -17,7 +17,7 @@ function sourceSnapshot(source: DocumentData): Source {
   return { id: source.id, title: source.title, sourceType: source.sourceType, url: source.url, publisher: source.publisher ?? null, publishedOn: source.publishedOn ?? null, notes: source.notes ?? null };
 }
 function defaults(entity: Entity): DocumentData {
-  if (entity === 'clinics') return { address: null, latitude: null, longitude: null, licensingStatus: null, regulator: null, phone: null, email: null, website: null, recordStatus: 'draft', lastReviewedAt: new Date().toISOString().slice(0, 10), demonstrationData: false, serviceIds: [] };
+  if (entity === 'clinics') return { address: null, latitude: null, longitude: null, licensingStatus: null, regulator: null, phone: null, email: null, website: null, googleRating: null, googleReviewCount: null, dataSource: null, dataRetrievedAt: null, recordStatus: 'draft', lastReviewedAt: new Date().toISOString().slice(0, 10), demonstrationData: false, serviceIds: [] };
   if (entity === 'services') return { description: null };
   if (entity === 'sources') return { publisher: null, publishedOn: null, notes: null };
   return { numerator: null, denominatorCount: null, ageMeasurementPoint: null, priorTreatmentCohort: null, supersedesId: null, smallSample: false, verificationStatus: 'unverified', publicationStatus: 'draft' };

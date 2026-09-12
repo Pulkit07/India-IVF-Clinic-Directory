@@ -38,6 +38,12 @@ export const ListClinicsQueryParams = zod.object({
 
 
 
+export const listClinicsResponseItemsItemGoogleRatingMin = 0;
+export const listClinicsResponseItemsItemGoogleRatingMax = 5;
+
+export const listClinicsResponseItemsItemGoogleReviewCountMin = 0;
+export const listClinicsResponseItemsItemGoogleReviewCountMultipleOf = 1;
+
 export const listClinicsResponseItemsItemHeadlineObservationOneRatePercentageMin = 0;
 export const listClinicsResponseItemsItemHeadlineObservationOneRatePercentageMax = 100;
 
@@ -71,6 +77,10 @@ export const ListClinicsResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().min(1).nullish(),
   "website": zod.string().min(1).nullish(),
+  "googleRating": zod.number().min(listClinicsResponseItemsItemGoogleRatingMin).max(listClinicsResponseItemsItemGoogleRatingMax).nullish(),
+  "googleReviewCount": zod.number().min(listClinicsResponseItemsItemGoogleReviewCountMin).multipleOf(listClinicsResponseItemsItemGoogleReviewCountMultipleOf).nullish(),
+  "dataSource": zod.string().nullish(),
+  "dataRetrievedAt": zod.coerce.date().nullish(),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -140,6 +150,12 @@ export const GetClinicParams = zod.object({
 
 
 
+export const getClinicResponseOneGoogleRatingMin = 0;
+export const getClinicResponseOneGoogleRatingMax = 5;
+
+export const getClinicResponseOneGoogleReviewCountMin = 0;
+export const getClinicResponseOneGoogleReviewCountMultipleOf = 1;
+
 export const getClinicResponseOneHeadlineObservationOneRatePercentageMin = 0;
 export const getClinicResponseOneHeadlineObservationOneRatePercentageMax = 100;
 
@@ -176,6 +192,10 @@ export const GetClinicResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().min(1).nullish(),
   "website": zod.string().min(1).nullish(),
+  "googleRating": zod.number().min(getClinicResponseOneGoogleRatingMin).max(getClinicResponseOneGoogleRatingMax).nullish(),
+  "googleReviewCount": zod.number().min(getClinicResponseOneGoogleReviewCountMin).multipleOf(getClinicResponseOneGoogleReviewCountMultipleOf).nullish(),
+  "dataSource": zod.string().nullish(),
+  "dataRetrievedAt": zod.coerce.date().nullish(),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -337,6 +357,12 @@ export const GetAdminSummaryResponse = zod.object({
  */
 
 
+export const listAdminClinicsResponseOneGoogleRatingMin = 0;
+export const listAdminClinicsResponseOneGoogleRatingMax = 5;
+
+export const listAdminClinicsResponseOneGoogleReviewCountMin = 0;
+export const listAdminClinicsResponseOneGoogleReviewCountMultipleOf = 1;
+
 export const listAdminClinicsResponseOneHeadlineObservationOneRatePercentageMin = 0;
 export const listAdminClinicsResponseOneHeadlineObservationOneRatePercentageMax = 100;
 
@@ -363,6 +389,10 @@ export const ListAdminClinicsResponseItem = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().min(1).nullish(),
   "website": zod.string().min(1).nullish(),
+  "googleRating": zod.number().min(listAdminClinicsResponseOneGoogleRatingMin).max(listAdminClinicsResponseOneGoogleRatingMax).nullish(),
+  "googleReviewCount": zod.number().min(listAdminClinicsResponseOneGoogleReviewCountMin).multipleOf(listAdminClinicsResponseOneGoogleReviewCountMultipleOf).nullish(),
+  "dataSource": zod.string().nullish(),
+  "dataRetrievedAt": zod.coerce.date().nullish(),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -421,6 +451,12 @@ export const ListAdminClinicsResponse = zod.array(ListAdminClinicsResponseItem)
 
 
 
+export const createClinicBodyGoogleRatingMin = 0;
+export const createClinicBodyGoogleRatingMax = 5;
+
+export const createClinicBodyGoogleReviewCountMin = 0;
+export const createClinicBodyGoogleReviewCountMultipleOf = 1;
+
 
 
 export const CreateClinicBody = zod.object({
@@ -436,10 +472,20 @@ export const CreateClinicBody = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().min(1).nullish(),
   "website": zod.string().min(1).nullish(),
+  "googleRating": zod.number().min(createClinicBodyGoogleRatingMin).max(createClinicBodyGoogleRatingMax).nullish(),
+  "googleReviewCount": zod.number().min(createClinicBodyGoogleReviewCountMin).multipleOf(createClinicBodyGoogleReviewCountMultipleOf).nullish(),
+  "dataSource": zod.string().nullish(),
+  "dataRetrievedAt": zod.coerce.date().nullish(),
   "serviceIds": zod.array(zod.string()).optional()
 })
 
 
+
+export const createClinicResponseOneGoogleRatingMin = 0;
+export const createClinicResponseOneGoogleRatingMax = 5;
+
+export const createClinicResponseOneGoogleReviewCountMin = 0;
+export const createClinicResponseOneGoogleReviewCountMultipleOf = 1;
 
 export const createClinicResponseOneHeadlineObservationOneRatePercentageMin = 0;
 export const createClinicResponseOneHeadlineObservationOneRatePercentageMax = 100;
@@ -467,6 +513,10 @@ export const CreateClinicResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().min(1).nullish(),
   "website": zod.string().min(1).nullish(),
+  "googleRating": zod.number().min(createClinicResponseOneGoogleRatingMin).max(createClinicResponseOneGoogleRatingMax).nullish(),
+  "googleReviewCount": zod.number().min(createClinicResponseOneGoogleReviewCountMin).multipleOf(createClinicResponseOneGoogleReviewCountMultipleOf).nullish(),
+  "dataSource": zod.string().nullish(),
+  "dataRetrievedAt": zod.coerce.date().nullish(),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -528,6 +578,12 @@ export const UpdateClinicParams = zod.object({
 
 
 
+export const updateClinicBodyOneGoogleRatingMin = 0;
+export const updateClinicBodyOneGoogleRatingMax = 5;
+
+export const updateClinicBodyOneGoogleReviewCountMin = 0;
+export const updateClinicBodyOneGoogleReviewCountMultipleOf = 1;
+
 
 
 export const UpdateClinicBody = zod.object({
@@ -543,10 +599,20 @@ export const UpdateClinicBody = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().min(1).nullish(),
   "website": zod.string().min(1).nullish(),
+  "googleRating": zod.number().min(updateClinicBodyOneGoogleRatingMin).max(updateClinicBodyOneGoogleRatingMax).nullish(),
+  "googleReviewCount": zod.number().min(updateClinicBodyOneGoogleReviewCountMin).multipleOf(updateClinicBodyOneGoogleReviewCountMultipleOf).nullish(),
+  "dataSource": zod.string().nullish(),
+  "dataRetrievedAt": zod.coerce.date().nullish(),
   "serviceIds": zod.array(zod.string()).optional()
 })
 
 
+
+export const updateClinicResponseOneGoogleRatingMin = 0;
+export const updateClinicResponseOneGoogleRatingMax = 5;
+
+export const updateClinicResponseOneGoogleReviewCountMin = 0;
+export const updateClinicResponseOneGoogleReviewCountMultipleOf = 1;
 
 export const updateClinicResponseOneHeadlineObservationOneRatePercentageMin = 0;
 export const updateClinicResponseOneHeadlineObservationOneRatePercentageMax = 100;
@@ -574,6 +640,10 @@ export const UpdateClinicResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().min(1).nullish(),
   "website": zod.string().min(1).nullish(),
+  "googleRating": zod.number().min(updateClinicResponseOneGoogleRatingMin).max(updateClinicResponseOneGoogleRatingMax).nullish(),
+  "googleReviewCount": zod.number().min(updateClinicResponseOneGoogleReviewCountMin).multipleOf(updateClinicResponseOneGoogleReviewCountMultipleOf).nullish(),
+  "dataSource": zod.string().nullish(),
+  "dataRetrievedAt": zod.coerce.date().nullish(),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),

@@ -30,10 +30,13 @@ service cloud.firestore {
       return ids.size() <= i || (ids[i] is string && exists(/databases/$(database)/documents/services/$(ids[i])));
     }
     function validClinic(d) {
-      return d.keys().hasOnly(['id','name','slug','city','state','address','latitude','longitude','licensingStatus','regulator','phone','email','website','recordStatus','lastReviewedAt','demonstrationData','serviceIds','createdAt','updatedAt','auditId']) &&
+      return d.keys().hasOnly(['id','name','slug','city','state','address','latitude','longitude','licensingStatus','regulator','phone','email','website','googleRating','googleReviewCount','dataSource','dataRetrievedAt','recordStatus','lastReviewedAt','demonstrationData','serviceIds','createdAt','updatedAt','auditId']) &&
         text(d.name, 300) && slug(d.slug) && text(d.city, 200) && text(d.state, 200) &&
         optionalText(d.address, 2000) && optionalText(d.licensingStatus, 500) && optionalText(d.regulator, 500) &&
         optionalText(d.phone, 100) && optionalText(d.email, 320) && optionalText(d.website, 2048) &&
+        (d.googleRating == null || (d.googleRating is number && d.googleRating >= 0 && d.googleRating <= 5)) &&
+        (d.googleReviewCount == null || (d.googleReviewCount is int && d.googleReviewCount >= 0)) &&
+        optionalText(d.dataSource, 500) && (d.dataRetrievedAt == null || date(d.dataRetrievedAt)) &&
         (d.latitude == null || (d.latitude is number && d.latitude >= -90 && d.latitude <= 90)) &&
         (d.longitude == null || (d.longitude is number && d.longitude >= -180 && d.longitude <= 180)) &&
         d.recordStatus in ['draft','published','archived'] && date(d.lastReviewedAt) && d.demonstrationData is bool &&
