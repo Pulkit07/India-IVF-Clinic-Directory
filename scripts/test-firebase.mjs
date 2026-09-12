@@ -81,7 +81,7 @@ try {
   assert.equal((await request(`/clinics/${clinic.slug}`)).observations.length, 0);
   await request("/admin/rate-observations", "POST", { ...observationData, reportingPeriodEnd: "2024-12-31" }, token, 400);
   await request("/admin/rate-observations", "POST", { ...observationData, clinicId: "missing" }, token, 400);
-  const correction = await request("/corrections", "POST", { clinicSlug: clinic.slug, message: "Please review this test record.", contactEmail: "test@example.test" }, undefined, 201);
+  const correction = await request("/corrections", "POST", { clinicSlug: clinic.slug, correctionType: "other", message: "Please review this test record.", sourceUrl: null, contactEmail: "test@example.test" }, undefined, 201);
   assert(correction.id && correction.receivedAt);
   await request("/corrections", "POST", {}, undefined, 400);
   const adminClinics = await request("/admin/clinics", "GET", undefined, token);

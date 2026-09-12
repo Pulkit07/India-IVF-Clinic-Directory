@@ -663,11 +663,14 @@ components:
             recordStatus: { type: string }
     CorrectionInput:
       type: object
-      required: [clinicSlug, message, contactEmail]
+      required: [clinicSlug, correctionType, message, contactEmail]
       properties:
         clinicSlug: { type: string, minLength: 1 }
-        observationId: { type: ["string", "null"] }
+        correctionType:
+          type: string
+          enum: [address, phone, name, location, success_rate, closed, duplicate, other]
         message: { type: string, minLength: 10, maxLength: 5000 }
+        sourceUrl: { type: ["string", "null"] }
         contactEmail: { type: string, minLength: 1 }
     CorrectionReceipt:
       type: object

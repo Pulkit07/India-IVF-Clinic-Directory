@@ -3,6 +3,12 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "functions": {
+    "source": ".firebase-build",
+    "predeploy": [
+      "pnpm --filter @workspace/api-server build:firebase"
+    ]
+  },
   "hosting": {
     "site": "ivf-directory-india",
     "public": "artifacts/ivf-directory/dist/public",

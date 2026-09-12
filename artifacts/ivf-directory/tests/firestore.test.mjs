@@ -79,11 +79,11 @@ try {
   await editor.store.publishRateObservation(observation.id);
   await editor.store.updateClinic(clinic.id, { ...input, slug: 'renamed-clinic' }); checks++;
   check(!(await getDoc(doc(editor.db, 'unique_keys', await uniqueKey('clinics', 'clinic')))).exists(), 'Old slug reservation released');
-  const correction = await visitor.store.submitCorrection({ clinicSlug: 'renamed-clinic', message: 'Please correct this clinic address.', contactEmail: 'test@example.test' }); checks++;
+  const correction = await visitor.store.submitCorrection({ clinicSlug: 'renamed-clinic', correctionType: 'address', message: 'Please correct this clinic address.', sourceUrl: 'https://example.test/clinic', contactEmail: 'test@example.test' }); checks++;
   await denied(() => getDoc(doc(visitor.db, 'correction_submissions', correction.id)), 'Receipt does not expose submission');
   await denied(() => getDocs(collection(reader.db, 'correction_submissions')), 'Ordinary users cannot read corrections');
-  await denied(() => visitor.store.submitCorrection({ clinicSlug: 'renamed-clinic', message: 'short', contactEmail: 'invalid' }), 'Malformed correction rejected');
-  await denied(() => setDoc(doc(visitor.db, 'correction_submissions', 'forged'), { id: 'forged', clinicSlug: 'renamed-clinic', observationId: null, message: 'This has forged status.', contactEmail: 'test@example.test', status: 'approved', createdAt: serverTimestamp() }), 'Forged correction status rejected');
+  await denied(() => visitor.store.submitCorrection({ clinicSlug: 'renamed-clinic', correctionType: 'address', message: 'short', sourceUrl: null, contactEmail: 'invalid' }), 'Malformed correction rejected');
+  await denied(() => setDoc(doc(visitor.db, 'correction_submissions', 'forged'), { id: 'forged', clinicSlug: 'renamed-clinic', correctionType: 'address', message: 'This has forged status.', sourceUrl: null, contactEmail: 'test@example.test', status: 'approved', createdAt: serverTimestamp() }), 'Forged correction status rejected');
   const audits = await editor.store.listAuditEvents();
   check(audits.some(event => event.beforeSnapshot?.slug === 'clinic' && event.afterSnapshot?.slug === 'renamed-clinic'), 'Before and after snapshots persisted');
   await denied(() => updateDoc(doc(editor.db, 'audit_events', audits[0].id), { action: 'forged' }), 'Audits immutable');

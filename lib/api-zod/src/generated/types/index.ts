@@ -18,6 +18,7 @@ export * from './clinicListResponse';
 export * from './clinicProfile';
 export * from './clinicUpdate';
 export * from './correctionInput';
+export * from './correctionInputCorrectionType';
 export * from './correctionReceipt';
 export * from './denominatorTypeParameter';
 export * from './eggSourceParameter';

@@ -273,16 +273,31 @@ export type AdminClinic = Clinic & {
   recordStatus: string;
 };
 
+export type CorrectionInputCorrectionType = typeof CorrectionInputCorrectionType[keyof typeof CorrectionInputCorrectionType];
+
+
+export const CorrectionInputCorrectionType = {
+  address: 'address',
+  phone: 'phone',
+  name: 'name',
+  location: 'location',
+  success_rate: 'success_rate',
+  closed: 'closed',
+  duplicate: 'duplicate',
+  other: 'other',
+} as const;
+
 export interface CorrectionInput {
   /** @minLength 1 */
   clinicSlug: string;
-  /** @nullable */
-  observationId?: string | null;
+  correctionType: CorrectionInputCorrectionType;
   /**
      * @minLength 10
      * @maxLength 5000
      */
   message: string;
+  /** @nullable */
+  sourceUrl?: string | null;
   /** @minLength 1 */
   contactEmail: string;
 }

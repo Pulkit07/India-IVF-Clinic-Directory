@@ -131,9 +131,11 @@ service cloud.firestore {
     }
     match /correction_submissions/{id} {
       allow read: if admin();
-      allow create: if request.resource.data.keys().hasOnly(['id','clinicSlug','observationId','message','contactEmail','status','createdAt']) &&
-        request.resource.data.id == id && slug(request.resource.data.clinicSlug) && optionalText(request.resource.data.observationId, 128) &&
+      allow create: if request.resource.data.keys().hasOnly(['id','clinicSlug','correctionType','message','sourceUrl','contactEmail','status','createdAt']) &&
+        request.resource.data.id == id && slug(request.resource.data.clinicSlug) &&
+        request.resource.data.correctionType in ['address','phone','name','location','success_rate','closed','duplicate','other'] &&
         text(request.resource.data.message, 5000) && request.resource.data.message.size() >= 10 &&
+        (request.resource.data.sourceUrl == null || (text(request.resource.data.sourceUrl, 2048) && request.resource.data.sourceUrl.matches('^https?://.+'))) &&
         text(request.resource.data.contactEmail, 320) && request.resource.data.contactEmail.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
         request.resource.data.status == 'pending' && request.resource.data.createdAt == request.time;
       allow update, delete: if false;

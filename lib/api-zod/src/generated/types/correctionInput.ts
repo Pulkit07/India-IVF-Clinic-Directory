@@ -5,17 +5,19 @@
  * Evidence-led IVF clinic directory API for fictional demonstration data.
  * OpenAPI spec version: 0.1.0
  */
+import type { CorrectionInputCorrectionType } from './correctionInputCorrectionType';
 
 export interface CorrectionInput {
   /** @minLength 1 */
   clinicSlug: string;
-  /** @nullable */
-  observationId?: string | null;
+  correctionType: CorrectionInputCorrectionType;
   /**
      * @minLength 10
      * @maxLength 5000
      */
   message: string;
+  /** @nullable */
+  sourceUrl?: string | null;
   /** @minLength 1 */
   contactEmail: string;
 }

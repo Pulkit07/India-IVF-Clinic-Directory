@@ -4,7 +4,7 @@ import type { Clinic, Service, Source, RateObservation, AuditEvent } from "@work
 import { firestore } from "./firebase";
 
 export type StoredClinic = Clinic & { serviceIds: string[] };
-type Correction = { id: string; clinicSlug: string; observationId: string | null; message: string; contactEmail: string; status: string; createdAt: Date };
+type Correction = { id: string; clinicSlug: string; correctionType: string; message: string; sourceUrl: string | null; contactEmail: string; status: string; createdAt: Date };
 export type Records = { clinics: StoredClinic; services: Service; sources: Source; rate_observations: RateObservation; audit_events: AuditEvent; correction_submissions: Correction };
 export type Collection = keyof Records;
 
@@ -32,7 +32,7 @@ function defaults(collection: Collection): Record<string, unknown> {
     case "services": return { description: null };
     case "sources": return { publisher: null, publishedOn: null, notes: null };
     case "rate_observations": return { numerator: null, denominatorCount: null, ageMeasurementPoint: null, priorTreatmentCohort: null, supersedesId: null, smallSample: false, verificationStatus: "unverified", publicationStatus: "draft", updatedAt: now };
-    case "correction_submissions": return { observationId: null, status: "pending" };
+    case "correction_submissions": return { sourceUrl: null, status: "pending" };
     default: return {};
   }
 }

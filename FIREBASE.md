@@ -1,6 +1,6 @@
 # Firebase deployment
 
-The app targets Firebase project `ivf-directory-india` and works on the no-cost Spark plan. The browser uses Firebase Authentication and Cloud Firestore directly; Firestore Security Rules enforce public visibility, administrator access, data validation, unique keys and atomic audit records. Firebase Hosting serves the static Vite build. No Cloud Function is deployed.
+The app targets Firebase project `ivf-directory-india`. The browser uses Firebase Authentication and Cloud Firestore directly; Firestore Security Rules enforce public visibility, administrator access, data validation, unique keys and atomic audit records. Firebase Hosting serves the static Vite build. A Firebase function can send correction-submission notifications through Resend; deploying functions requires the Blaze plan.
 
 ## Configured project state
 
@@ -9,6 +9,29 @@ The app targets Firebase project `ivf-directory-india` and works on the no-cost 
 - `OpenIVF Web` registered with Hosting site `ivf-directory-india`
 - Web configuration stored in ignored `artifacts/ivf-directory/.env.local`
 - Direct-access emulator suite: 47 checks passing
+
+## Correction notification email
+
+The `notifyCorrectionSubmission` function runs when a document is created in `correction_submissions`. It looks up the clinic name and sends the correction details through Resend. Missing email configuration causes the notification to be skipped without affecting the saved submission.
+
+Create the API-key secret when the Resend account is ready:
+
+```sh
+pnpm dlx firebase-tools@14.17.0 functions:secrets:set RESEND_API_KEY --project ivf-directory-india
+```
+
+Create `.env.ivf-directory-india` in the repository root with the notification addresses:
+
+```dotenv
+CORRECTIONS_NOTIFICATION_EMAIL=owner@example.com
+CORRECTIONS_FROM_EMAIL=OpenIVF <corrections@verified-domain.example>
+```
+
+The sender must use a domain verified by Resend. Keep the API key out of the environment file and source control. Deploy the trigger after configuring all three values:
+
+```sh
+pnpm dlx firebase-tools@14.17.0 deploy --project ivf-directory-india --only functions:notifyCorrectionSubmission
+```
 
 ## Deploy
 

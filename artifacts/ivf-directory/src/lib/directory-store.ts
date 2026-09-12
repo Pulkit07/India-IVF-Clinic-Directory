@@ -130,7 +130,7 @@ export function createDirectoryStore(db: Firestore, uid: () => string | undefine
     },
     async submitCorrection(input: CorrectionInput): Promise<CorrectionReceipt> {
       const ref = doc(collection(db, 'correction_submissions'));
-      await setDoc(ref, { ...input, observationId: input.observationId ?? null, id: ref.id, status: 'pending', createdAt: serverTimestamp() });
+      await setDoc(ref, { ...input, sourceUrl: input.sourceUrl ?? null, id: ref.id, status: 'pending', createdAt: serverTimestamp() });
       // Receipt does not require permission to read submissions back.
       return { id: ref.id, receivedAt: new Date().toISOString() };
     },

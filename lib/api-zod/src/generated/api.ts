@@ -307,8 +307,9 @@ export const submitCorrectionBodyMessageMax = 5000;
 
 export const SubmitCorrectionBody = zod.object({
   "clinicSlug": zod.string().min(1),
-  "observationId": zod.string().nullish(),
+  "correctionType": zod.enum(['address', 'phone', 'name', 'location', 'success_rate', 'closed', 'duplicate', 'other']),
   "message": zod.string().min(submitCorrectionBodyMessageMin).max(submitCorrectionBodyMessageMax),
+  "sourceUrl": zod.string().nullish(),
   "contactEmail": zod.string().min(1)
 })
 

@@ -683,6 +683,18 @@ p { color: hsl(var(--muted-foreground)); line-height: 1.65; }
 .contact-row svg,
 .contact-card .text-link { color: hsl(7 48% 76%); }
 
+.field-help,
+.field-error {
+  display: block;
+  margin-top: 7px;
+  font: 10px/1.5 var(--app-font-mono);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.field-help { color: hsl(var(--muted-foreground)); }
+.field-error { color: hsl(var(--destructive)); }
+
 .clinic-card-actions {
   display: flex;
   align-items: center;
