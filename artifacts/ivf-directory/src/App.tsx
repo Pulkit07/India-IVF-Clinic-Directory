@@ -6,7 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import About from "@/pages/about";
 import Admin from "@/pages/admin";
-import ClinicProfile from "@/pages/clinic-profile";
+// Clinic detail pages are intentionally disabled in the public UI.
+// import ClinicProfile from "@/pages/clinic-profile";
 import Clinics from "@/pages/clinics";
 import Corrections from "@/pages/corrections";
 import Glossary from "@/pages/glossary";
@@ -31,7 +32,7 @@ function AppRouter() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/clinics" component={Clinics} />
-        <Route path="/clinics/:slug" component={ClinicProfile} />
+        {/* <Route path="/clinics/:slug" component={ClinicProfile} /> */}
         <Route path="/locations" component={Locations} />
         <Route path="/glossary" component={Glossary} />
         <Route path="/about" component={About} />

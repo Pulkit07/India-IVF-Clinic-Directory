@@ -1,13 +1,12 @@
 import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import {
-  ArrowRight,
   ChevronDown,
   FileText,
   Info,
   MapPin,
+  Phone,
   Search,
 } from "lucide-react";
-import { Link } from "wouter";
 import type {
   Clinic,
   Location,
@@ -194,46 +193,118 @@ export function RateDefinition({
   );
 }
 
+type DefinitionQuality = "limited" | "partial" | "clear";
+
+function definitionQuality(observation: RateObservation): DefinitionQuality {
+  const details = [
+    observation.outcomeDefinition.length >= 15,
+    observation.denominatorDefinition.length >= 15,
+    Boolean(observation.ageBand),
+    Boolean(observation.eggSource),
+    Boolean(observation.treatmentType && observation.treatmentContext),
+    Boolean(observation.reportingPeriodStart && observation.reportingPeriodEnd),
+    observation.denominatorCount != null,
+    observation.numerator != null,
+    observation.verificationStatus.toLowerCase() === "verified",
+  ];
+  const score = details.filter(Boolean).length;
+
+  if (score >= 8) return "clear";
+  if (score >= 5) return "partial";
+  return "limited";
+}
+
+function ClinicRateSummary({ observation }: { observation: RateObservation }) {
+  const quality = definitionQuality(observation);
+  const qualityLabel = {
+    clear: "Clear definition",
+    partial: "Partial definition",
+    limited: "Limited definition",
+  }[quality];
+
+  return (
+    <dl
+      className="clinic-rate-summary"
+      data-testid={`rate-observation-${observation.id}`}
+    >
+      <div>
+        <dt>Reported success rate</dt>
+        <dd className="clinic-rate-value">
+          {observation.ratePercentage.toFixed(1)}%
+        </dd>
+      </div>
+      <div>
+        <dt>
+          Success rate definition
+          <span
+            className={`definition-quality definition-quality-${quality}`}
+            title={`${qualityLabel}: based on the completeness and verification of the published definition`}
+          >
+            <span aria-hidden="true" />
+            {qualityLabel}
+          </span>
+        </dt>
+        <dd>{observation.outcomeDefinition}</dd>
+      </div>
+    </dl>
+  );
+}
+
 export function ClinicCard({ clinic }: { clinic: Clinic }) {
+  const locationQuery =
+    clinic.latitude != null && clinic.longitude != null
+      ? `${clinic.latitude},${clinic.longitude}`
+      : [clinic.address, clinic.city, clinic.state].filter(Boolean).join(", ");
+  const locationUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationQuery)}`;
+
   return (
     <article className="clinic-card" data-testid={`card-clinic-${clinic.id}`}>
-      <div className="clinic-card-top">
-        <div>
-          <span className="status-dot" />{" "}
-          <span className="micro-label">
-            {clinic.licensingStatus || "Licensing information available"}
-          </span>
+      {!clinic.demonstrationData && (
+        <div className="clinic-card-top">
+          <div>
+            <span className="status-dot" />{" "}
+            <span className="micro-label">
+              {clinic.licensingStatus || "Licensing information available"}
+            </span>
+          </div>
         </div>
-        <span className="reviewed">
-          {clinic.demonstrationData
-            ? "Demonstration record"
-            : `Reviewed ${new Date(clinic.lastReviewedAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`}
-        </span>
+      )}
+      <div className="clinic-card-heading">
+        <h2 className="clinic-card-name">{clinic.name}</h2>
+        <div className="clinic-card-actions">
+          {clinic.phone && (
+            <a
+              href={`tel:${clinic.phone}`}
+              aria-label={`Call ${clinic.name}`}
+              title={`Call ${clinic.phone}`}
+              data-testid={`link-call-clinic-${clinic.id}`}
+            >
+              <Phone size={18} />
+            </a>
+          )}
+          <a
+            href={locationUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`View ${clinic.name} on a map`}
+            title="View location"
+            data-testid={`link-location-clinic-${clinic.id}`}
+          >
+            <MapPin size={18} />
+          </a>
+        </div>
       </div>
-      <Link
-        href={`/clinics/${clinic.slug}`}
-        className="clinic-card-title"
-        data-testid={`link-clinic-${clinic.id}`}
-      >
-        {clinic.name}
-        <ArrowRight size={18} />
-      </Link>
       <p className="clinic-location">
         <MapPin size={15} />
         {clinic.city}, {clinic.state}
       </p>
       {clinic.headlineObservation ? (
-        <RateDefinition observation={clinic.headlineObservation} />
+        <ClinicRateSummary observation={clinic.headlineObservation} />
       ) : (
         <p className="no-rate">
           No eligible rate observation is published for this record.
         </p>
       )}
-      <div className="service-row">
-        {clinic.services.slice(0, 3).map((service) => (
-          <span key={service.id}>{service.name}</span>
-        ))}
-      </div>
     </article>
   );
 }

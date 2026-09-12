@@ -641,3 +641,128 @@ p { color: hsl(var(--muted-foreground)); line-height: 1.65; }
   .about-builder { padding: 24px; }
   .about-next { flex-direction: column; align-items: start; }
 }
+.clinic-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 14px 0 2px;
+}
+
+.clinic-card-name {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.045em;
+}
+
+.clinic-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.clinic-card-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 50%;
+  color: hsl(var(--primary));
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.clinic-card-actions a:hover {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--secondary));
+}
+
+.clinic-card-actions a:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.clinic-rate-summary {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.65fr) minmax(240px, 1.35fr);
+  margin: 20px 0 0;
+  border: 1px solid hsl(var(--border));
+  background: hsl(210 38% 98%);
+}
+
+.clinic-rate-summary > div {
+  padding: 16px 17px;
+}
+
+.clinic-rate-summary > div + div {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.clinic-rate-summary dt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: hsl(var(--muted-foreground));
+  font: 10px var(--app-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.clinic-rate-summary dd {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.clinic-rate-summary .clinic-rate-value {
+  color: hsl(var(--primary));
+  font: 500 30px var(--app-font-mono);
+  line-height: 1;
+}
+
+.definition-quality {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.definition-quality > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.definition-quality-clear {
+  color: hsl(145 55% 34%);
+}
+.definition-quality-partial {
+  color: hsl(40 88% 40%);
+}
+.definition-quality-limited {
+  color: hsl(4 68% 48%);
+}
+
+@media (max-width: 800px) {
+  .clinic-card-name {
+    font-size: 21px;
+  }
+  .clinic-rate-summary {
+    grid-template-columns: 1fr;
+  }
+  .clinic-rate-summary > div + div {
+    border-top: 1px solid hsl(var(--border));
+    border-left: 0;
+  }
+}
