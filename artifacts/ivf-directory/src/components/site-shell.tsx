@@ -4,7 +4,7 @@ import { Link } from "wouter";
 const navItems = [
   { href: "/clinics", label: "Find a clinic" },
   { href: "/locations", label: "Locations" },
-  { href: "/glossary", label: "Behind the Rates" },
+  { href: "/glossary", label: "Understanding Success Rates" },
 ];
 
 function Logo() {
@@ -41,7 +41,7 @@ export function Shell({ children }: { children: ReactNode }) {
               className="header-about"
               data-testid="link-about"
             >
-              About this directory
+              About
             </Link>
           </div>
         </div>
@@ -83,7 +83,7 @@ function Footer() {
             className="footer-link"
             data-testid="footer-link-glossary"
           >
-            Behind the Rates
+            Understanding Success Rates
           </Link>
         </div>
         <div>
@@ -119,7 +119,6 @@ function Footer() {
         </div>
       </div>
       <div className="shell-inner footer-bottom">
-        <span>Demonstration directory · India</span>
         <span>Information, not medical advice.</span>
       </div>
     </footer>

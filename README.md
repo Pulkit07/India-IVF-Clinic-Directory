@@ -29,4 +29,4 @@ See [FIREBASE.md](FIREBASE.md) for administrator access, emulator testing, and d
 
 ## Disclaimer
 
-OpenIVF provides general information, not medical advice. Reported clinic statistics describe past groups of treatment cycles and do not predict an individual patient’s outcome. Some records may contain fictional demonstration data.
+OpenIVF provides general information, not medical advice. Reported clinic statistics describe past groups of treatment cycles and do not predict an individual patient’s outcome.

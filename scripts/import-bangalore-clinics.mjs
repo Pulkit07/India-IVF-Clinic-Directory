@@ -194,7 +194,7 @@ try {
 
   await batch.commit();
   console.log(
-    `Imported ${clinics.length} published clinics and archived ${archived} demonstration clinics in ${project}.`,
+    `Imported ${clinics.length} published clinics and archived ${archived} existing clinics in ${project}.`,
   );
 } finally {
   await firestore.terminate();

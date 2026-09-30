@@ -23,7 +23,7 @@ export default function About() {
               together so you can ask better questions.
             </p>
             <Link href="/glossary" className="text-link">
-              Go behind the rates <ArrowRight size={16} />
+              Understanding Success Rates <ArrowRight size={16} />
             </Link>
           </section>
           <section>

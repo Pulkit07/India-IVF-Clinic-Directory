@@ -1,8 +1,6 @@
 import type { Clinic, RateObservation, Service, Source } from "@workspace/db/schema";
 import { list, getMany } from "./store";
 
-export const DEMO_SOURCE_URL = "https://example.invalid/ivf-methodology-demo";
-
 type ClinicWithDetails = Clinic & {
   services: Service[];
   observations: RateObservation[];

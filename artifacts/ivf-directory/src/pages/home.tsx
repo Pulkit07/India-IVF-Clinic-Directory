@@ -71,7 +71,7 @@ export default function Home() {
             className="text-link"
             data-testid="link-home-glossary"
           >
-            Behind the rates <ArrowRight size={16} />
+            Understanding Success Rates <ArrowRight size={16} />
           </Link>
         </div>
         <p className="home-definitions-copy">
@@ -135,12 +135,6 @@ export default function Home() {
           </Link>
         </div>
       </section>
-      <div className="shell-inner home-data-note">
-        <p>
-          Currently showing fictional demonstration records. Reported rates
-          describe past outcomes and do not predict an individual’s result.
-        </p>
-      </div>
     </Shell>
   );
 }

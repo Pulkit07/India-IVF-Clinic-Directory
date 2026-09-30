@@ -16,12 +16,11 @@ export default function Terms() {
           is not medical advice, diagnosis, treatment, referral, or a guarantee
           of outcomes.
         </p>
-        <h2>Sources and demonstration records</h2>
+        <h2>Sources and records</h2>
         <p>
           Records are presented with their sources and review dates where
-          available. Some records are fictional demonstration data. You are
-          responsible for checking details with the clinic and a qualified
-          clinician before making decisions.
+          available. You are responsible for checking details with the clinic
+          and a qualified clinician before making decisions.
         </p>
         <h2>Respectful corrections</h2>
         <p>
