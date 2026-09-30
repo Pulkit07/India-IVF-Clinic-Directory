@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   ArrowRight,
   Check,
@@ -8,6 +9,8 @@ import {
   Link as LinkIcon,
   Mail,
   Phone,
+  Search,
+  SearchX,
   ShieldCheck,
 } from "lucide-react";
 import { Link, useParams } from "wouter";
@@ -20,6 +23,7 @@ import {
   LoadingBlock,
   RateDefinition,
 } from "@/components/directory";
+import { Seo } from "@/components/seo";
 import { Shell } from "@/components/site-shell";
 import { getGetClinicQueryKey, useGetClinic } from "@/lib/directory-hooks";
 
@@ -29,11 +33,141 @@ export default function ClinicProfilePage() {
     query: { queryKey: getGetClinicQueryKey(slug) },
   });
   const clinic = profile.data as ClinicProfile | undefined;
+
+  useEffect(() => {
+    if (!clinic) return;
+
+    const title = `${clinic.name} in ${clinic.city}, ${clinic.state} | OpenIVF`;
+    const description = `View published details, services, and reported IVF success-rate observations for ${clinic.name} in ${clinic.city}, ${clinic.state}.`;
+    const canonicalUrl = new URL(
+      `/clinics/${encodeURIComponent(clinic.slug)}`,
+      window.location.origin,
+    ).toString();
+    const previousTitle = document.title;
+    const upsertMeta = (selector: string, attribute: string, value: string) => {
+      let element = document.head.querySelector<HTMLMetaElement>(selector);
+      const created = !element;
+      if (!element) {
+        element = document.createElement("meta");
+        const [name, attributeValue] = attribute.split("=");
+        element.setAttribute(name, attributeValue);
+        document.head.appendChild(element);
+      }
+      const previousContent = element.content;
+      element.content = value;
+      return () => {
+        if (created) element?.remove();
+        else if (element) element.content = previousContent;
+      };
+    };
+
+    document.title = title;
+    const restoreMeta = [
+      upsertMeta('meta[name="description"]', "name=description", description),
+      upsertMeta('meta[name="robots"]', "name=robots", "index, follow"),
+      upsertMeta('meta[property="og:title"]', "property=og:title", title),
+      upsertMeta('meta[property="og:description"]', "property=og:description", description),
+      upsertMeta('meta[property="og:type"]', "property=og:type", "website"),
+      upsertMeta('meta[property="og:url"]', "property=og:url", canonicalUrl),
+      upsertMeta('meta[name="twitter:title"]', "name=twitter:title", title),
+      upsertMeta('meta[name="twitter:description"]', "name=twitter:description", description),
+    ];
+
+    let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const createdCanonical = !canonical;
+    const previousCanonical = canonical?.href;
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.rel = "canonical";
+      document.head.appendChild(canonical);
+    }
+    canonical.href = canonicalUrl;
+
+    const structuredData = document.createElement("script");
+    structuredData.type = "application/ld+json";
+    structuredData.dataset.clinicProfile = "true";
+    structuredData.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "MedicalClinic",
+      name: clinic.name,
+      url: canonicalUrl,
+      ...(clinic.website ? { sameAs: clinic.website } : {}),
+      ...(clinic.phone ? { telephone: clinic.phone } : {}),
+      ...(clinic.email ? { email: clinic.email } : {}),
+      address: {
+        "@type": "PostalAddress",
+        ...(clinic.address ? { streetAddress: clinic.address } : {}),
+        addressLocality: clinic.city,
+        addressRegion: clinic.state,
+        addressCountry: "IN",
+      },
+      medicalSpecialty: "ReproductiveMedicine",
+      availableService: clinic.services.map((service) => ({
+        "@type": "MedicalProcedure",
+        name: service.name,
+      })),
+    });
+    document.head.appendChild(structuredData);
+
+    return () => {
+      document.title = previousTitle;
+      restoreMeta.forEach((restore) => restore());
+      if (createdCanonical) canonical?.remove();
+      else if (canonical && previousCanonical) canonical.href = previousCanonical;
+      structuredData.remove();
+    };
+  }, [clinic]);
+
+  const isNotFound =
+    profile.error instanceof Error &&
+    profile.error.message.toLowerCase().includes("clinic not found");
+
+  useEffect(() => {
+    if (isNotFound) window.location.replace("/404");
+  }, [isNotFound]);
+
   if (profile.isLoading)
     return (
       <Shell>
         <div className="shell-inner">
           <LoadingBlock lines={6} />
+        </div>
+      </Shell>
+    );
+  if (isNotFound)
+    return (
+      <Shell>
+        <Seo
+          title="Clinic Not Found | OpenIVF"
+          description="This clinic profile could not be found in the OpenIVF directory."
+          robots="noindex, nofollow"
+        />
+        <div className="shell-inner">
+          <div className="state-card clinic-not-found" role="status">
+            <SearchX size={28} aria-hidden="true" />
+            <p className="eyebrow">Clinic not found</p>
+            <h1>We couldn’t find this clinic.</h1>
+            <p>
+              It may have moved, changed its web address, or no longer be listed
+              in the directory.
+            </p>
+            <div className="state-actions">
+              <Link
+                href="/clinics"
+                className="btn btn-primary"
+                data-testid="link-clinic-not-found-search"
+              >
+                <Search size={16} /> Search clinics
+              </Link>
+              <Link
+                href="/locations"
+                className="btn btn-outline"
+                data-testid="link-clinic-not-found-locations"
+              >
+                Browse locations
+              </Link>
+            </div>
+          </div>
         </div>
       </Shell>
     );

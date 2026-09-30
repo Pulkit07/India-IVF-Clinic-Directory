@@ -12,6 +12,7 @@ import type {
   Location,
   RateObservation,
 } from "@workspace/api-client-react";
+import { Link } from "wouter";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "quiet" | "outline" | "danger";
@@ -262,7 +263,14 @@ export function ClinicCard({ clinic }: { clinic: Clinic }) {
   return (
     <article className="clinic-card" data-testid={`card-clinic-${clinic.id}`}>
       <div className="clinic-card-heading">
-        <h2 className="clinic-card-name">{clinic.name}</h2>
+        <h2 className="clinic-card-name">
+          <Link
+            href={`/clinics/${encodeURIComponent(clinic.slug)}`}
+            data-testid={`link-clinic-${clinic.id}`}
+          >
+            {clinic.name}
+          </Link>
+        </h2>
         <div className="clinic-card-actions">
           {clinic.phone && (
             <a

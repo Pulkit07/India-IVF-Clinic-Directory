@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Clinic, Location } from "@workspace/api-client-react";
 import {
@@ -14,6 +14,8 @@ import {
 import { Shell } from "@/components/site-shell";
 import { getListClinicsQueryKey, useListClinics } from "@/lib/directory-hooks";
 
+const CLINICS_PER_PAGE = 10;
+
 export default function Clinics() {
   const [location, setLocation] = useLocation();
   const params = new URLSearchParams(
@@ -22,6 +24,8 @@ export default function Clinics() {
       : location.split("?")[1] || "",
   );
   const [search, setSearch] = useState(params.get("q") || "");
+  const parsedPage = Number.parseInt(params.get("page") || "1", 10);
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const [filters, setFilters] = useState({
     city: params.get("city") || "",
     location: params.get("location") || "",
@@ -43,6 +47,19 @@ export default function Clinics() {
   const visibleClinics = (data?.items || []).filter(
     (clinic) => !filters.city || cityFor(clinic) === filters.city,
   );
+  const totalPages = Math.max(1, Math.ceil(visibleClinics.length / CLINICS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedClinics = visibleClinics.slice(
+    (currentPage - 1) * CLINICS_PER_PAGE,
+    currentPage * CLINICS_PER_PAGE,
+  );
+  const goToPage = (nextPage: number) => {
+    const next = new URLSearchParams();
+    if (search) next.set("q", search);
+    Object.entries(filters).forEach(([key, value]) => value && next.set(key, value));
+    if (nextPage > 1) next.set("page", String(nextPage));
+    setLocation(`/clinics${next.toString() ? `?${next}` : ""}`);
+  };
   const update = (key: keyof typeof filters, value: string) => {
     const next = { ...filters, [key]: value };
     if (key === "city") next.location = "";
@@ -158,11 +175,24 @@ export default function Clinics() {
           ) : result.isError ? (
             <ErrorBlock retry={() => result.refetch()} />
           ) : visibleClinics.length ? (
-            <div className="clinic-list">
-              {visibleClinics.map((clinic: Clinic) => (
-                <ClinicCard clinic={clinic} key={clinic.id} />
-              ))}
-            </div>
+            <>
+              <div className="clinic-list">
+                {pagedClinics.map((clinic: Clinic) => (
+                  <ClinicCard clinic={clinic} key={clinic.id} />
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <nav className="pagination" aria-label="Clinic results pages">
+                  <button type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous page" data-testid="button-page-previous">
+                    <ArrowLeft size={15} /> Previous
+                  </button>
+                  <span aria-live="polite">Page {currentPage} of {totalPages}</span>
+                  <button type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Next page" data-testid="button-page-next">
+                    Next <ArrowRight size={15} />
+                  </button>
+                </nav>
+              )}
+            </>
           ) : (
             <EmptyBlock
               title="No clinics match those filters."
