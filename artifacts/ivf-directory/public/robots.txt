@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://ivf-directory-india.web.app/sitemap.xml

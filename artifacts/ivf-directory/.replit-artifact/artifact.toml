@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "India IVF Clinic Directory"
-description = "A mobile-first, evidence-led directory that helps people browse fictional IVF clinics in India and understand the source, definition, and comparability of every published success-rate observation."
+description = "A mobile-first, evidence-led directory that helps people browse IVF clinics in India and understand the source, definition, and comparability of every published success-rate observation."
 version = "1.0.0"
 id = "artifacts/ivf-directory"
 router = "path"
@@ -20,7 +20,39 @@ serve = "static"
 publicDir = "artifacts/ivf-directory/dist/public"
 
 [[services.production.rewrites]]
-from = "/*"
+from = "/clinics"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/clinics/*"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/locations"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/glossary"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/about"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/privacy"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/terms"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/corrections"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/admin"
 to = "/index.html"
 
 [services.env]
