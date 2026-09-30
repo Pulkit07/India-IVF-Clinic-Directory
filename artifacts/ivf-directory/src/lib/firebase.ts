@@ -1,12 +1,24 @@
 import { getApps, initializeApp } from 'firebase/app';
-import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 
-let client: Promise<{ auth: ReturnType<typeof getAuth>; db: ReturnType<typeof getFirestore> }> | undefined;
-export function getFirebase() {
-  return client ??= initialize().catch(error => { client = undefined; throw error; });
+let databaseClient: Promise<ReturnType<typeof getFirestore>> | undefined;
+let authenticatedClient: ReturnType<typeof initializeAuth> | undefined;
+
+export function getFirebaseDb() {
+  return databaseClient ??= initializeDatabase().catch(error => {
+    databaseClient = undefined;
+    throw error;
+  });
 }
-async function initialize() {
+
+export function getFirebase() {
+  return authenticatedClient ??= initializeAuth().catch(error => {
+    authenticatedClient = undefined;
+    throw error;
+  });
+}
+
+async function initializeDatabase() {
   const env = import.meta.env;
   let config = env.VITE_FIREBASE_API_KEY ? {
     apiKey: env.VITE_FIREBASE_API_KEY,
@@ -21,11 +33,19 @@ async function initialize() {
   }
   if (!config?.apiKey) throw new Error('Firebase is not configured.');
   const app = getApps()[0] ?? initializeApp(config);
-  const auth = getAuth(app);
   const db = getFirestore(app);
   if (env.DEV && env.VITE_USE_FIREBASE_EMULATORS === 'true') {
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099');
     connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  }
+  return db;
+}
+
+async function initializeAuth() {
+  const db = await getFirebaseDb();
+  const { connectAuthEmulator, getAuth } = await import('firebase/auth');
+  const auth = getAuth(getApps()[0]);
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099');
   }
   await auth.authStateReady();
   return { auth, db };
