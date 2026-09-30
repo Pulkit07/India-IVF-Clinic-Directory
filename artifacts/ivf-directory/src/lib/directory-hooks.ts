@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { getFirebase, getFirebaseDb } from "./firebase";
 import { createDirectoryStore, previewImport } from "./directory-store";
+import { publicDirectoryStore } from "./public-directory-store";
 import type {
   ClinicInput,
   ClinicUpdate,
@@ -56,7 +57,7 @@ export function useListLocations(
   return useQuery({
     ...options?.query,
     queryKey: getListLocationsQueryKey(),
-    queryFn: async () => (await store()).listLocations(),
+    queryFn: async () => publicDirectoryStore.listLocations(),
     staleTime: 30_000,
   });
 }
@@ -147,7 +148,7 @@ export function useListClinics(
   return useQuery({
     ...options?.query,
     queryKey: getListClinicsQueryKey(params),
-    queryFn: async () => (await store()).listClinics(params),
+    queryFn: async () => publicDirectoryStore.listClinics(params),
     staleTime: 30_000,
   });
 }
@@ -162,7 +163,7 @@ export function useGetClinic(
   return useQuery({
     ...options?.query,
     queryKey: getGetClinicQueryKey(slug),
-    queryFn: async () => (await store()).getClinic(slug),
+    queryFn: async () => publicDirectoryStore.getClinic(slug),
     staleTime: 30_000,
   });
 }
