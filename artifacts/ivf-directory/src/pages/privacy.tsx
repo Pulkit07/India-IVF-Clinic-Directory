@@ -72,12 +72,9 @@ export default function Privacy() {
 
         <h2>Retention and security</h2>
         <p>
-          Correction submissions, including the supplied email address, are
-          automatically deleted after 90 days. Short-lived, pseudonymous abuse-
-          prevention counters are deleted after two days. Other personal
-          information is kept only for as long as reasonably necessary for the
-          purposes described above, including maintaining security and audit
-          records and meeting legal obligations.
+          We keep personal information only for as long as reasonably necessary
+          for the purposes described above, including resolving corrections,
+          maintaining security and audit records, and meeting legal obligations.
           Retention may be longer where records must be preserved for a legal
           claim or in secure backups.
         </p>

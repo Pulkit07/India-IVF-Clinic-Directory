@@ -1,6 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, where, orderBy, limit, runTransaction, serverTimestamp, getCountFromServer, type Firestore, type DocumentData } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { getFirebaseFunctions } from './firebase';
+import { collection, doc, getDoc, getDocs, query, where, orderBy, limit, runTransaction, serverTimestamp, setDoc, getCountFromServer, type Firestore, type DocumentData } from 'firebase/firestore';
 import type { Clinic, AdminClinic, ClinicProfile, Service, Source, RateObservation, ClinicInput, ClinicUpdate, ServiceInput, SourceInput, RateObservationInput, CorrectionInput, CorrectionReceipt, ClinicListResponse, ListClinicsParams, Location, AdminSummary, AuditEvent, ImportPreview, ImportPreviewInput } from '@workspace/api-client-react';
 
 type Entity = 'clinics' | 'services' | 'sources' | 'rate_observations';
@@ -131,8 +129,10 @@ export function createDirectoryStore(db: Firestore, uid: () => string | undefine
       return { clinicCount, publishedObservationCount, draftObservationCount, pendingCorrectionCount, recentAuditEvents };
     },
     async submitCorrection(input: CorrectionInput): Promise<CorrectionReceipt> {
-      const submit = httpsCallable<CorrectionInput, CorrectionReceipt>(await getFirebaseFunctions(), 'submitCorrection');
-      return (await submit({ ...input, sourceUrl: input.sourceUrl ?? null })).data;
+      const ref = doc(collection(db, 'correction_submissions'));
+      await setDoc(ref, { ...input, sourceUrl: input.sourceUrl ?? null, id: ref.id, status: 'pending', createdAt: serverTimestamp() });
+      // Receipt does not require permission to read submissions back.
+      return { id: ref.id, receivedAt: new Date().toISOString() };
     },
   };
 }

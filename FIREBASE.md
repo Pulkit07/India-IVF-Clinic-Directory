@@ -12,9 +12,9 @@ The app targets Firebase project `ivf-directory-india`. The browser uses Firebas
 
 ## Correction notification email
 
-The browser submits corrections through `submitCorrection`, a callable function that requires Firebase App Check and consumes each App Check token to limit replay. The function enforces five submissions per source per hour and twenty per day using transactional counters. Direct browser writes are denied by Firestore Rules. `notifyCorrectionSubmission` sends the resulting notification through Resend, and `deleteExpiredCorrections` removes submissions after 90 days and rate-limit counters after two days.
+On the Spark plan, the browser writes validated correction submissions directly to Firestore. The optional `submitCorrection`, `notifyCorrectionSubmission`, and `deleteExpiredCorrections` functions add App Check enforcement, rate limiting, notification email, and automatic retention cleanup, but require upgrading the Firebase project to Blaze before deployment.
 
-Register a reCAPTCHA Enterprise web app in Firebase App Check, add its site key as `VITE_FIREBASE_APPCHECK_SITE_KEY`, then enable enforcement for Cloud Functions after deploying and confirming valid requests in App Check metrics. Deploy all three correction functions together:
+To enable the optional functions later, register a reCAPTCHA Enterprise web app in Firebase App Check, add its site key as `VITE_FIREBASE_APPCHECK_SITE_KEY`, then enable enforcement for Cloud Functions after deploying and confirming valid requests in App Check metrics.
 
 Create the API-key secret when the Resend account is ready:
 
