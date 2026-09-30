@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Check, ClipboardCheck } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Button, Eyebrow, PageIntro } from "@/components/directory";
 import { Shell } from "@/components/site-shell";
 import {
@@ -22,8 +22,8 @@ const correctionTypes = [
 type CorrectionType = (typeof correctionTypes)[number][0];
 
 export default function Corrections() {
-  const [location] = useLocation();
-  const params = new URLSearchParams(location.split("?")[1] || "");
+  const search = useSearch();
+  const params = new URLSearchParams(search);
   const initialClinicSlug = params.get("clinic") || "";
   const [form, setForm] = useState<{
     clinicSlug: string;

@@ -53,7 +53,8 @@ service cloud.firestore {
         optionalText(d.publisher, 500) && (d.publishedOn == null || date(d.publishedOn)) && optionalText(d.notes, 5000);
     }
     function sourceSnapshot(s) {
-      return {'id':s.id, 'title':s.title, 'sourceType':s.sourceType, 'url':s.url, 'publisher':s.publisher, 'publishedOn':s.publishedOn, 'notes':s.notes};
+      // Internal source notes must never be copied into publicly readable observations.
+      return {'id':s.id, 'title':s.title, 'sourceType':s.sourceType, 'url':s.url, 'publisher':s.publisher, 'publishedOn':s.publishedOn};
     }
     function norm(v) { return v.lower().replace('^\\s+|\\s+$', '').replace('\\s+', '-'); }
     function comparison(d, state) {
@@ -131,14 +132,8 @@ service cloud.firestore {
     }
     match /correction_submissions/{id} {
       allow read: if admin();
-      allow create: if request.resource.data.keys().hasOnly(['id','clinicSlug','correctionType','message','sourceUrl','contactEmail','status','createdAt']) &&
-        request.resource.data.id == id && slug(request.resource.data.clinicSlug) &&
-        request.resource.data.correctionType in ['address','phone','name','location','success_rate','closed','duplicate','other'] &&
-        text(request.resource.data.message, 5000) && request.resource.data.message.size() >= 10 &&
-        (request.resource.data.sourceUrl == null || (text(request.resource.data.sourceUrl, 2048) && request.resource.data.sourceUrl.matches('^https?://.+'))) &&
-        text(request.resource.data.contactEmail, 320) && request.resource.data.contactEmail.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
-        request.resource.data.status == 'pending' && request.resource.data.createdAt == request.time;
-      allow update, delete: if false;
+      // Public intake goes through the App Check-protected, rate-limited function.
+      allow create, update, delete: if false;
     }
     match /{document=**} { allow read, write: if false; }
   }

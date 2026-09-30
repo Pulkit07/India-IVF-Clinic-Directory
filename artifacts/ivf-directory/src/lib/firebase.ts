@@ -1,5 +1,7 @@
 import { getApps, initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 
 let databaseClient: Promise<ReturnType<typeof getFirestore>> | undefined;
 let authenticatedClient: ReturnType<typeof initializeAuth> | undefined;
@@ -33,11 +35,27 @@ async function initializeDatabase() {
   }
   if (!config?.apiKey) throw new Error('Firebase is not configured.');
   const app = getApps()[0] ?? initializeApp(config);
+  const appCheckSiteKey = env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+  if (appCheckSiteKey) {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  }
   const db = getFirestore(app);
   if (env.DEV && env.VITE_USE_FIREBASE_EMULATORS === 'true') {
     connectFirestoreEmulator(db, '127.0.0.1', 8080);
   }
   return db;
+}
+
+export async function getFirebaseFunctions() {
+  await getFirebaseDb();
+  const functions = getFunctions(getApps()[0], 'asia-south1');
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
+    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+  }
+  return functions;
 }
 
 async function initializeAuth() {

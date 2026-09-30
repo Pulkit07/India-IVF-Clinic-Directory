@@ -12,7 +12,9 @@ The app targets Firebase project `ivf-directory-india`. The browser uses Firebas
 
 ## Correction notification email
 
-The `notifyCorrectionSubmission` function runs when a document is created in `correction_submissions`. It looks up the clinic name and sends the correction details through Resend. Missing email configuration causes the notification to be skipped without affecting the saved submission.
+The browser submits corrections through `submitCorrection`, a callable function that requires Firebase App Check and consumes each App Check token to limit replay. The function enforces five submissions per source per hour and twenty per day using transactional counters. Direct browser writes are denied by Firestore Rules. `notifyCorrectionSubmission` sends the resulting notification through Resend, and `deleteExpiredCorrections` removes submissions after 90 days and rate-limit counters after two days.
+
+Register a reCAPTCHA Enterprise web app in Firebase App Check, add its site key as `VITE_FIREBASE_APPCHECK_SITE_KEY`, then enable enforcement for Cloud Functions after deploying and confirming valid requests in App Check metrics. Deploy all three correction functions together:
 
 Create the API-key secret when the Resend account is ready:
 
@@ -30,7 +32,14 @@ CORRECTIONS_FROM_EMAIL=OpenIVF <corrections@verified-domain.example>
 The sender must use a domain verified by Resend. Keep the API key out of the environment file and source control. Deploy the trigger after configuring all three values:
 
 ```sh
-pnpm dlx firebase-tools@14.17.0 deploy --project ivf-directory-india --only functions:notifyCorrectionSubmission
+pnpm dlx firebase-tools@14.17.0 deploy --project ivf-directory-india --only functions:submitCorrection,functions:notifyCorrectionSubmission,functions:deleteExpiredCorrections
+```
+
+Before deploying the updated Firestore Rules, remove internal notes from source snapshots already embedded in observations. Preview first, then apply with trusted Application Default Credentials:
+
+```sh
+node scripts/remove-public-source-notes.mjs --project=ivf-directory-india
+node scripts/remove-public-source-notes.mjs --project=ivf-directory-india --write
 ```
 
 ## Deploy

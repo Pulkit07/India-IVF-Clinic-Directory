@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import type { Clinic, Location } from "@workspace/api-client-react";
 import {
   ClinicCard,
@@ -31,12 +31,9 @@ function clinicsUrl(search: string, filters: ClinicFilters, page = 1) {
 }
 
 export default function Clinics() {
-  const [location, setLocation] = useLocation();
-  const params = new URLSearchParams(
-    typeof window !== "undefined"
-      ? window.location.search
-      : location.split("?")[1] || "",
-  );
+  const [, setLocation] = useLocation();
+  const queryString = useSearch();
+  const params = new URLSearchParams(queryString);
   const [search, setSearch] = useState(params.get("q") || "");
   const parsedPage = Number.parseInt(params.get("page") || "1", 10);
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;

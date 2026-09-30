@@ -60,6 +60,7 @@ try {
   await editor.store.publishRateObservation(observation.id); checks++;
   const profile = await visitor.store.getClinic('clinic');
   check(profile.observations.length === 1 && profile.observations[0].source.id === source.id, 'Published source snapshot visible');
+  check(!('notes' in profile.observations[0].source), 'Internal source notes excluded from public snapshot');
   check((await visitor.store.listClinics({ service: 'ivf', reportingYear: 2025 })).total === 1, 'Service and observation filters work');
   check((await visitor.store.listClinics({ reportingYear: 2024 })).total === 0, 'Unmatched cohort excluded');
   const unverified = await editor.store.createRateObservation({ ...observationInput, verificationStatus: 'unverified' });
@@ -79,10 +80,8 @@ try {
   await editor.store.publishRateObservation(observation.id);
   await editor.store.updateClinic(clinic.id, { ...input, slug: 'renamed-clinic' }); checks++;
   check(!(await getDoc(doc(editor.db, 'unique_keys', await uniqueKey('clinics', 'clinic')))).exists(), 'Old slug reservation released');
-  const correction = await visitor.store.submitCorrection({ clinicSlug: 'renamed-clinic', correctionType: 'address', message: 'Please correct this clinic address.', sourceUrl: 'https://example.test/clinic', contactEmail: 'test@example.test' }); checks++;
-  await denied(() => getDoc(doc(visitor.db, 'correction_submissions', correction.id)), 'Receipt does not expose submission');
+  await denied(() => setDoc(doc(visitor.db, 'correction_submissions', 'direct'), { id: 'direct', clinicSlug: 'renamed-clinic', correctionType: 'address', message: 'Please correct this clinic address.', sourceUrl: 'https://example.test/clinic', contactEmail: 'test@example.test', status: 'pending', createdAt: serverTimestamp() }), 'Direct public correction writes are denied');
   await denied(() => getDocs(collection(reader.db, 'correction_submissions')), 'Ordinary users cannot read corrections');
-  await denied(() => visitor.store.submitCorrection({ clinicSlug: 'renamed-clinic', correctionType: 'address', message: 'short', sourceUrl: null, contactEmail: 'invalid' }), 'Malformed correction rejected');
   await denied(() => setDoc(doc(visitor.db, 'correction_submissions', 'forged'), { id: 'forged', clinicSlug: 'renamed-clinic', correctionType: 'address', message: 'This has forged status.', sourceUrl: null, contactEmail: 'test@example.test', status: 'approved', createdAt: serverTimestamp() }), 'Forged correction status rejected');
   const audits = await editor.store.listAuditEvents();
   check(audits.some(event => event.beforeSnapshot?.slug === 'clinic' && event.afterSnapshot?.slug === 'renamed-clinic'), 'Before and after snapshots persisted');
@@ -90,7 +89,7 @@ try {
   await denied(() => deleteDoc(doc(editor.db, 'audit_events', audits[0].id)), 'Audit deletion denied');
   await denied(() => getDocs(collection(visitor.db, 'audit_events')), 'Audit history private');
   const summary = await editor.store.getAdminSummary();
-  check(summary.clinicCount === 1 && summary.pendingCorrectionCount === 1, 'Admin counts correct');
+  check(summary.clinicCount === 1 && summary.pendingCorrectionCount === 0, 'Admin counts correct');
   await editor.store.archiveClinic(clinic.id);
   check((await visitor.store.listClinics()).total === 0, 'Archived clinic hidden');
   await denied(() => getDoc(doc(visitor.db, 'rate_observations', observation.id)), 'Archived parent hides published observation');
