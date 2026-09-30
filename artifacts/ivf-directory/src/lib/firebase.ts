@@ -1,9 +1,9 @@
 import { getApps, initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
-import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, initializeFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 
-let databaseClient: Promise<ReturnType<typeof getFirestore>> | undefined;
+let databaseClient: Promise<ReturnType<typeof initializeFirestore>> | undefined;
 let authenticatedClient: ReturnType<typeof initializeAuth> | undefined;
 
 export function getFirebaseDb() {
@@ -42,7 +42,12 @@ async function initializeDatabase() {
       isTokenAutoRefreshEnabled: true,
     });
   }
-  const db = getFirestore(app);
+  const db = initializeFirestore(app, {
+    // Some mobile networks, privacy tools, and buffering proxies block
+    // Firestore's streaming WebChannel transport. Long polling keeps the
+    // public directory available in those environments.
+    experimentalForceLongPolling: true,
+  });
   if (env.DEV && env.VITE_USE_FIREBASE_EMULATORS === 'true') {
     connectFirestoreEmulator(db, '127.0.0.1', 8080);
   }
