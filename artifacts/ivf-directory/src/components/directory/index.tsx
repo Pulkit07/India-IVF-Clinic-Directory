@@ -301,9 +301,7 @@ export function ClinicCard({ clinic }: { clinic: Clinic }) {
       {clinic.headlineObservation ? (
         <ClinicRateSummary observation={clinic.headlineObservation} />
       ) : (
-        <p className="no-rate">
-          No eligible rate observation is published for this record.
-        </p>
+        <p className="no-rate">Success rate not shared.</p>
       )}
     </article>
   );
