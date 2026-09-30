@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   ArrowRight,
   Check,
@@ -34,97 +33,9 @@ export default function ClinicProfilePage() {
   });
   const clinic = profile.data as ClinicProfile | undefined;
 
-  useEffect(() => {
-    if (!clinic) return;
-
-    const title = `${clinic.name} in ${clinic.city}, ${clinic.state} | OpenIVF`;
-    const description = `View published details, services, and reported IVF success-rate observations for ${clinic.name} in ${clinic.city}, ${clinic.state}.`;
-    const canonicalUrl = new URL(
-      `/clinics/${encodeURIComponent(clinic.slug)}`,
-      window.location.origin,
-    ).toString();
-    const previousTitle = document.title;
-    const upsertMeta = (selector: string, attribute: string, value: string) => {
-      let element = document.head.querySelector<HTMLMetaElement>(selector);
-      const created = !element;
-      if (!element) {
-        element = document.createElement("meta");
-        const [name, attributeValue] = attribute.split("=");
-        element.setAttribute(name, attributeValue);
-        document.head.appendChild(element);
-      }
-      const previousContent = element.content;
-      element.content = value;
-      return () => {
-        if (created) element?.remove();
-        else if (element) element.content = previousContent;
-      };
-    };
-
-    document.title = title;
-    const restoreMeta = [
-      upsertMeta('meta[name="description"]', "name=description", description),
-      upsertMeta('meta[name="robots"]', "name=robots", "index, follow"),
-      upsertMeta('meta[property="og:title"]', "property=og:title", title),
-      upsertMeta('meta[property="og:description"]', "property=og:description", description),
-      upsertMeta('meta[property="og:type"]', "property=og:type", "website"),
-      upsertMeta('meta[property="og:url"]', "property=og:url", canonicalUrl),
-      upsertMeta('meta[name="twitter:title"]', "name=twitter:title", title),
-      upsertMeta('meta[name="twitter:description"]', "name=twitter:description", description),
-    ];
-
-    let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-    const createdCanonical = !canonical;
-    const previousCanonical = canonical?.href;
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-    canonical.href = canonicalUrl;
-
-    const structuredData = document.createElement("script");
-    structuredData.type = "application/ld+json";
-    structuredData.dataset.clinicProfile = "true";
-    structuredData.textContent = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "MedicalClinic",
-      name: clinic.name,
-      url: canonicalUrl,
-      ...(clinic.website ? { sameAs: clinic.website } : {}),
-      ...(clinic.phone ? { telephone: clinic.phone } : {}),
-      ...(clinic.email ? { email: clinic.email } : {}),
-      address: {
-        "@type": "PostalAddress",
-        ...(clinic.address ? { streetAddress: clinic.address } : {}),
-        addressLocality: clinic.city,
-        addressRegion: clinic.state,
-        addressCountry: "IN",
-      },
-      medicalSpecialty: "ReproductiveMedicine",
-      availableService: clinic.services.map((service) => ({
-        "@type": "MedicalProcedure",
-        name: service.name,
-      })),
-    });
-    document.head.appendChild(structuredData);
-
-    return () => {
-      document.title = previousTitle;
-      restoreMeta.forEach((restore) => restore());
-      if (createdCanonical) canonical?.remove();
-      else if (canonical && previousCanonical) canonical.href = previousCanonical;
-      structuredData.remove();
-    };
-  }, [clinic]);
-
   const isNotFound =
     profile.error instanceof Error &&
     profile.error.message.toLowerCase().includes("clinic not found");
-
-  useEffect(() => {
-    if (isNotFound) window.location.replace("/404");
-  }, [isNotFound]);
 
   if (profile.isLoading)
     return (
@@ -181,6 +92,31 @@ export default function ClinicProfilePage() {
     );
   return (
     <Shell>
+      <Seo
+        title={`${clinic.name} in ${clinic.city}, ${clinic.state} | OpenIVF`}
+        description={`View published details, services, and reported IVF success-rate observations for ${clinic.name} in ${clinic.city}, ${clinic.state}.`}
+        canonicalPath={`/clinics/${encodeURIComponent(clinic.slug)}`}
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "MedicalClinic",
+          name: clinic.name,
+          ...(clinic.website ? { sameAs: clinic.website } : {}),
+          ...(clinic.phone ? { telephone: clinic.phone } : {}),
+          ...(clinic.email ? { email: clinic.email } : {}),
+          address: {
+            "@type": "PostalAddress",
+            ...(clinic.address ? { streetAddress: clinic.address } : {}),
+            addressLocality: clinic.city,
+            addressRegion: clinic.state,
+            addressCountry: "IN",
+          },
+          medicalSpecialty: "ReproductiveMedicine",
+          availableService: clinic.services.map((service) => ({
+            "@type": "MedicalProcedure",
+            name: service.name,
+          })),
+        }}
+      />
       <div className="shell-inner profile-page">
         <Link
           href="/clinics"

@@ -4,9 +4,15 @@ export type SeoMetadata = {
   title: string;
   description: string;
   robots?: string;
+  canonicalPath?: string;
+  structuredData?: Record<string, unknown>;
 };
 
-function setMeta(selector: string, attribute: "name" | "property", value: string) {
+function setMeta(
+  selector: string,
+  attribute: "name" | "property",
+  value: string,
+) {
   let element = document.head.querySelector<HTMLMetaElement>(selector);
 
   if (!element) {
@@ -18,9 +24,18 @@ function setMeta(selector: string, attribute: "name" | "property", value: string
   element.content = value;
 }
 
-export function Seo({ title, description, robots = "index, follow" }: SeoMetadata) {
+export function Seo({
+  title,
+  description,
+  robots = "index, follow",
+  canonicalPath,
+  structuredData,
+}: SeoMetadata) {
   useEffect(() => {
-    const canonicalUrl = new URL(window.location.pathname, window.location.origin).toString();
+    const canonicalUrl = new URL(
+      canonicalPath ?? window.location.pathname,
+      window.location.origin,
+    ).toString();
 
     document.title = title;
     setMeta('meta[name="description"]', "name", description);
@@ -33,14 +48,28 @@ export function Seo({ title, description, robots = "index, follow" }: SeoMetadat
     setMeta('meta[name="twitter:title"]', "name", title);
     setMeta('meta[name="twitter:description"]', "name", description);
 
-    let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    let canonical = document.head.querySelector<HTMLLinkElement>(
+      'link[rel="canonical"]',
+    );
     if (!canonical) {
       canonical = document.createElement("link");
       canonical.rel = "canonical";
       document.head.appendChild(canonical);
     }
     canonical.href = canonicalUrl;
-  }, [description, robots, title]);
+
+    if (!structuredData) return;
+
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify({
+      ...structuredData,
+      url: structuredData.url ?? canonicalUrl,
+    });
+    document.head.appendChild(script);
+
+    return () => script.remove();
+  }, [canonicalPath, description, robots, structuredData, title]);
 
   return null;
 }

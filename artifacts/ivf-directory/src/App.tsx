@@ -1,70 +1,36 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Seo, type SeoMetadata } from "@/components/seo";
 import Home from "@/pages/home";
 
 const About = lazy(() => import("@/pages/about"));
-const Admin = lazy(() =>
-  Promise.all([import("@/components/data-page"), import("@/pages/admin")]).then(
-    ([{ DataPage }, { default: Page }]) => ({
+
+type PageModule = { default: ComponentType };
+
+function lazyDataPage(loadPage: () => Promise<PageModule>) {
+  return lazy(async () => {
+    const [{ DataPage }, { default: Page }] = await Promise.all([
+      import("@/components/data-page"),
+      loadPage(),
+    ]);
+
+    return {
       default: () => (
         <DataPage>
           <Page />
         </DataPage>
       ),
-    }),
-  ),
-);
-const ClinicProfile = lazy(() =>
-  Promise.all([
-    import("@/components/data-page"),
-    import("@/pages/clinic-profile"),
-  ]).then(([{ DataPage }, { default: Page }]) => ({
-    default: () => (
-      <DataPage>
-        <Page />
-      </DataPage>
-    ),
-  })),
-);
-const Clinics = lazy(() =>
-  Promise.all([
-    import("@/components/data-page"),
-    import("@/pages/clinics"),
-  ]).then(([{ DataPage }, { default: Page }]) => ({
-    default: () => (
-      <DataPage>
-        <Page />
-      </DataPage>
-    ),
-  })),
-);
-const Corrections = lazy(() =>
-  Promise.all([
-    import("@/components/data-page"),
-    import("@/pages/corrections"),
-  ]).then(([{ DataPage }, { default: Page }]) => ({
-    default: () => (
-      <DataPage>
-        <Page />
-      </DataPage>
-    ),
-  })),
-);
+    };
+  });
+}
+
+const Admin = lazyDataPage(() => import("@/pages/admin"));
+const ClinicProfile = lazyDataPage(() => import("@/pages/clinic-profile"));
+const Clinics = lazyDataPage(() => import("@/pages/clinics"));
+const Corrections = lazyDataPage(() => import("@/pages/corrections"));
 const Glossary = lazy(() => import("@/pages/glossary"));
-const Locations = lazy(() =>
-  Promise.all([
-    import("@/components/data-page"),
-    import("@/pages/locations"),
-  ]).then(([{ DataPage }, { default: Page }]) => ({
-    default: () => (
-      <DataPage>
-        <Page />
-      </DataPage>
-    ),
-  })),
-);
+const Locations = lazyDataPage(() => import("@/pages/locations"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Privacy = lazy(() => import("@/pages/privacy"));
 const Terms = lazy(() => import("@/pages/terms"));
